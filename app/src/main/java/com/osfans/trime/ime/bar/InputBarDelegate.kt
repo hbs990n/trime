@@ -7,6 +7,7 @@ package com.osfans.trime.ime.bar
 
 import android.view.ContextThemeWrapper
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.widget.ViewAnimator
 import androidx.annotation.Keep
 import androidx.core.content.ContextCompat
