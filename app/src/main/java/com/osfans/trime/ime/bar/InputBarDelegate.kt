@@ -5,18 +5,10 @@
 
 package com.osfans.trime.ime.bar
 
-import android.os.Build
-import android.util.Size
 import android.view.ContextThemeWrapper
 import android.view.View
-import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InlineSuggestion
-import android.view.inputmethod.InlineSuggestionsResponse
 import android.widget.ViewAnimator
-import android.widget.inline.InlineContentView
 import androidx.annotation.Keep
-import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.osfans.trime.R
@@ -44,11 +36,8 @@ import com.osfans.trime.ime.window.BoardWindowManager
 import com.osfans.trime.ui.main.ClipEditActivity
 import com.osfans.trime.util.AppUtils
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
@@ -56,8 +45,6 @@ import splitties.dimensions.dp
 import splitties.views.dsl.core.add
 import splitties.views.dsl.core.lParams
 import splitties.views.dsl.core.matchParent
-import java.util.concurrent.Executor
-import kotlin.coroutines.resume
 
 class InputBarDelegate(override val di: DI) :
     DIAware,
@@ -84,7 +71,6 @@ class InputBarDelegate(override val di: DI) :
     private var clipboardTimeoutJob: Job? = null
 
     private var isClipboardFresh: Boolean = false
-    private var isInlineSuggestionPresent: Boolean = false
 
     @Keep
     private val onClipboardUpdateListener = ClipboardHelper.OnClipboardUpdateListener {
@@ -117,7 +103,6 @@ class InputBarDelegate(override val di: DI) :
         val newState =
             when {
                 isClipboardFresh -> AlwaysUi.State.Clipboard
-                isInlineSuggestionPresent -> AlwaysUi.State.InlineSuggestion
                 else -> AlwaysUi.State.Toolbar
             }
         if (newState == alwaysUi.currentState) return
@@ -299,61 +284,6 @@ class InputBarDelegate(override val di: DI) :
 
     override fun onWindowDetached(window: BoardWindow) {
         barStateMachine.push(QuickBarStateMachine.TransitionEvent.WindowDetached)
-    }
-
-    private val suggestionSize by lazy {
-        Size(ViewGroup.LayoutParams.WRAP_CONTENT, context.dp(themedHeight))
-    }
-
-    private val directExecutor by lazy {
-        Executor { it.run() }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    fun handleInlineSuggestions(response: InlineSuggestionsResponse): Boolean {
-        val suggestions = response.inlineSuggestions
-        if (suggestions.isEmpty()) {
-            isInlineSuggestionPresent = false
-            return true
-        }
-        var pinned: InlineSuggestion? = null
-        val scrollable = mutableListOf<InlineSuggestion>()
-        var extraPinnedCount = 0
-        suggestions.forEach {
-            if (it.info.isPinned) {
-                if (pinned == null) {
-                    pinned = it
-                } else {
-                    scrollable.add(extraPinnedCount++, it)
-                }
-            } else {
-                scrollable.add(it)
-            }
-        }
-        service.lifecycleScope.launch {
-            alwaysUi.inlineSuggestionsUi.setPinnedView(
-                pinned?.let { inflateInlineContentView(it) },
-            )
-        }
-        service.lifecycleScope.launch {
-            val views = scrollable.map { s ->
-                service.lifecycleScope.async {
-                    inflateInlineContentView(s)
-                }
-            }.awaitAll()
-            alwaysUi.inlineSuggestionsUi.setScrollableViews(views)
-        }
-        isInlineSuggestionPresent = true
-        evalAlwaysUiState()
-        return true
-    }
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    private suspend fun inflateInlineContentView(suggestion: InlineSuggestion): InlineContentView? = suspendCancellableCoroutine { c ->
-        // callback view might be null
-        suggestion.inflate(context, suggestionSize, directExecutor) { v ->
-            c.resume(v)
-        }
     }
 
     /**

@@ -61,9 +61,6 @@ sealed class NavigationRoute : Parcelable {
     @Serializable
     data object About : NavigationRoute()
 
-    @Serializable
-    data object License : NavigationRoute()
-
     companion object {
         fun createGraph(controller: NavController) = controller.createGraph(Main) {
             val ctx = controller.context
@@ -105,9 +102,6 @@ sealed class NavigationRoute : Parcelable {
             }
             fragment<AboutFragment, About> {
                 label = ctx.getString(R.string.about)
-            }
-            fragment<LicenseFragment, License> {
-                label = ctx.getString(R.string.license)
             }
         }
     }

@@ -13,7 +13,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.ListPreference
 import androidx.preference.Preference
-import androidx.preference.SwitchPreferenceCompat
 import com.osfans.trime.R
 import com.osfans.trime.core.data.DataManager
 import com.osfans.trime.core.data.DataStorageMode
@@ -27,7 +26,6 @@ import com.osfans.trime.util.ResourceUtils
 import com.osfans.trime.util.addCategory
 import com.osfans.trime.util.addPreference
 import com.osfans.trime.util.buildDocumentsProviderIntent
-import com.osfans.trime.util.customFormatTimeInDefault
 import com.osfans.trime.util.toast
 import io.github.whiredplanck.storageaccess.StorageAccess
 import kotlinx.coroutines.Dispatchers
@@ -39,23 +37,9 @@ class ProfileSettingsFragment : PaddingPreferenceFragment() {
     private val prefs = AppPrefs.defaultInstance().profile
     private var dataStorageMode by prefs.dataStorageMode
     private val externalRimeDir by prefs.externalRimeTreeUri
-    private val backgroundSyncEnable = prefs.periodicBackgroundSync
-    private val lastSyncTime by prefs.lastBackgroundSyncTime
-    private val lastSyncStatus by prefs.lastBackgroundSyncStatus
 
     /** Set while the picker runs as part of switching the storage mode to external sync. */
     private var pendingExternalSyncSetup = false
-
-    private val onBackgroundSyncEnable = PreferenceDelegate.OnChangeListener<Boolean> { _, v ->
-        editSyncIntervalPreference.isEnabled = v
-    }
-
-    private val onSyncIntervalChange =
-        PreferenceDelegate.OnChangeListener<Int> { _, _ ->
-            if (backgroundSyncEnable.getValue()) {
-                viewModel.restartBackgroundSyncWork.value = true
-            }
-        }
 
     private val onDataPathChange = PreferenceDelegate.OnChangeListener<String> { _, _ ->
         updateDataPathSummary()
@@ -69,14 +53,10 @@ class ProfileSettingsFragment : PaddingPreferenceFragment() {
     private lateinit var dataStorageModePreference: ListPreference
     private lateinit var dataPathPreference: Preference
 
-    private lateinit var editSyncIntervalPreference: EditTextIntPreference
-
     private val storageAccess = StorageAccess(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        prefs.periodicBackgroundSync.registerOnChangeListener(onBackgroundSyncEnable)
-        prefs.periodicBackgroundSyncInterval.registerOnChangeListener(onSyncIntervalChange)
         prefs.externalRimeTreeUri.registerOnChangeListener(onDataPathChange)
         prefs.dataStorageMode.registerOnChangeListener(onStorageModeChange)
     }
@@ -269,46 +249,6 @@ class ProfileSettingsFragment : PaddingPreferenceFragment() {
                         }
                     }
                 }
-                addPreference(
-                    SwitchPreferenceCompat(ctx).apply {
-                        key = AppPrefs.Profile.PERIODIC_BACKGROUND_SYNC
-                        isIconSpaceReserved = false
-                        setTitle(R.string.periodic_background_sync)
-                        setDefaultValue(false)
-                        summaryProvider = Preference.SummaryProvider<SwitchPreferenceCompat> {
-                            if (backgroundSyncEnable.getValue()) {
-                                val lastTime: String
-                                val lastStatus: String
-                                if (lastSyncTime != 0L) {
-                                    lastTime = customFormatTimeInDefault("yyyy-MM-dd HH:mm", lastSyncTime)
-                                    lastStatus = getString(if (lastSyncStatus) R.string.success else R.string.failure)
-                                } else {
-                                    lastTime = "N/A"
-                                    lastStatus = "N/A"
-                                }
-                                getString(
-                                    R.string.periodic_background_sync_status,
-                                    lastTime,
-                                    lastStatus,
-                                )
-                            } else {
-                                ""
-                            }
-                        }
-                    },
-                )
-                addPreference(
-                    EditTextIntPreference(ctx).apply {
-                        editSyncIntervalPreference = this
-                        key = AppPrefs.Profile.PERIODIC_BACKGROUND_SYNC_INTERVAL
-                        isIconSpaceReserved = false
-                        setTitle(R.string.periodic_background_sync_interval)
-                        min = 15
-                        setDefaultValue(30)
-                        summaryProvider = EditTextIntPreference.SimpleSummaryProvider
-                        isEnabled = backgroundSyncEnable.getValue()
-                    },
-                )
             }
             addCategory(R.string.maintenance) {
                 isIconSpaceReserved = false
@@ -359,8 +299,6 @@ class ProfileSettingsFragment : PaddingPreferenceFragment() {
 
     override fun onDestroy() {
         super.onDestroy()
-        prefs.periodicBackgroundSync.unregisterOnChangeListener(onBackgroundSyncEnable)
-        prefs.periodicBackgroundSyncInterval.unregisterOnChangeListener(onSyncIntervalChange)
         prefs.externalRimeTreeUri.unregisterOnChangeListener(onDataPathChange)
         prefs.dataStorageMode.unregisterOnChangeListener(onStorageModeChange)
     }

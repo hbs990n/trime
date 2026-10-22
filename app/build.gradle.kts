@@ -10,7 +10,6 @@ plugins {
     id("com.osfans.trime.data-checksums")
     id("com.osfans.trime.native-cache-hash")
     id("com.osfans.trime.opencc-data")
-    alias(libs.plugins.aboutlibraries)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.ksp)
@@ -109,24 +108,6 @@ android {
     }
 }
 
-aboutLibraries {
-    collect {
-        configPath.set(file("licenses").takeIf { it.exists() })
-        fetchRemoteLicense.set(false)
-        fetchRemoteFunding.set(false)
-        includePlatform.set(false)
-    }
-    export {
-        excludeFields.set(
-            setOf("generated", "developers", "organization", "scm", "funding", "content"),
-        )
-    }
-}
-
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
-
 dependencies {
     ksp(project(":codegen"))
     implementation(libs.kotlinx.coroutines)
@@ -161,7 +142,6 @@ dependencies {
     implementation(libs.splitties.views.dsl.coordinatorlayout)
     implementation(libs.splitties.views.dsl.recyclerview)
     implementation(libs.splitties.views.recyclerview)
-    implementation(libs.aboutlibraries.core)
     implementation(libs.iconics.core)
     implementation(libs.community.material.typeface) {
         artifact { type = "aar" }

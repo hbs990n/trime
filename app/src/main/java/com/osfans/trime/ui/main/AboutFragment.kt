@@ -9,7 +9,6 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import com.osfans.trime.BuildConfig
 import com.osfans.trime.R
@@ -91,12 +90,6 @@ class AboutFragment : PaddingPreferenceFragment() {
                             Uri.parse(Const.LICENSE_URL),
                         ),
                     )
-                }
-                addPreference(
-                    R.string.open_source_licenses,
-                    R.string.licenses_of_third_party_libraries,
-                ) {
-                    findNavController().navigate(NavigationRoute.License)
                 }
             }
             addCategory("") {

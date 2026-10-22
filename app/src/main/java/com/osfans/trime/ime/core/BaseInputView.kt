@@ -24,7 +24,6 @@ import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.data.theme.ThemePrefs
 import com.osfans.trime.data.theme.ThemeScope
-import com.osfans.trime.ime.keyboard.InputFeedbackManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import splitties.dimensions.dp
@@ -80,7 +79,6 @@ abstract class BaseInputView(
             }
         }
         service.lifecycleScope.launch {
-            InputFeedbackManager.keyPressVibrate(view, longPress = true)
             candidateActionMenu =
                 PopupMenu(themedContext, view).apply {
                     menu.add(title).apply {

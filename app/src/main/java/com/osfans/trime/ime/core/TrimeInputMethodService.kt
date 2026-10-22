@@ -26,8 +26,6 @@ import android.view.WindowManager
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
-import android.view.inputmethod.InlineSuggestionsRequest
-import android.view.inputmethod.InlineSuggestionsResponse
 import android.widget.FrameLayout
 import androidx.annotation.Keep
 import androidx.annotation.RequiresApi
@@ -48,7 +46,6 @@ import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.composition.CandidatesView
-import com.osfans.trime.ime.keyboard.InputFeedbackManager
 import com.osfans.trime.receiver.RimeIntentReceiver
 import com.osfans.trime.util.any
 import com.osfans.trime.util.findSectionFrom
@@ -203,7 +200,6 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
                 ColorManager.addOnChangedListener(onColorChangeListener)
             }
         }
-        InputFeedbackManager.init(this)
         registerReceiver()
         super.onCreate()
         Timber.d("onCreate")
@@ -332,7 +328,6 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     }
 
     override fun onDestroy() {
-        InputFeedbackManager.destroy()
         inputView = null
         recreateInputViewPrefs.forEach {
             it.unregisterOnChangeListener(recreateInputViewListener)
@@ -561,27 +556,11 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         }
     }
 
-    private val inlineSuggestions by prefs.general.inlineSuggestions
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    override fun onCreateInlineSuggestionsRequest(uiExtras: Bundle): InlineSuggestionsRequest? {
-        if (!inlineSuggestions || !inputDeviceManager.useVirtualKeyboard) return null
-        val colors = themeScope?.colors ?: return null
-        return InlineSuggestions.createRequest(this, colors)
-    }
-
-    @SuppressLint("NewApi")
-    override fun onInlineSuggestionsResponse(response: InlineSuggestionsResponse): Boolean {
-        if (!inputDeviceManager.useVirtualKeyboard) return false
-        return inputView?.handleInlineSuggestions(response) == true
-    }
-
     override fun onStartInputView(
         attribute: EditorInfo,
         restarting: Boolean,
     ) {
         Timber.d("onStartInputView: restarting=$restarting")
-        InputFeedbackManager.startInput()
         postRimeJob {
             updateRimeOption(this)
         }
@@ -616,7 +595,6 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         postRimeJob {
             clearComposition()
         }
-        InputFeedbackManager.finishInput()
     }
 
     fun commitText(text: String) {
@@ -630,7 +608,6 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         }
         lastCommittedText = text
         composingText = ""
-        InputFeedbackManager.textCommitSpeak(text)
     }
 
     /**

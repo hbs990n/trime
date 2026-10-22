@@ -97,13 +97,11 @@ class AppPrefs(
         companion object {
             const val INLINE_PREEDIT_MODE = "inline_preedit_mode"
             const val ASCII_SWITCH_TIPS = "ascii_switch_tips"
-            const val INLINE_SUGGESTIONS = "inline_suggestions"
             const val PREFERRED_VOICE_INPUT = "preferred_voice_input"
         }
 
         val inlinePreeditMode = enum(R.string.inline_preedit_mode, INLINE_PREEDIT_MODE, InlinePreeditMode.DISABLE)
         val asciiSwitchTips = switch(R.string.ascii_switch_tips, ASCII_SWITCH_TIPS, true)
-        val inlineSuggestions = switch(R.string.inline_suggestions, INLINE_SUGGESTIONS, true)
 
         val preferredVoiceInput = list(
             R.string.preferred_voice_input,
@@ -131,17 +129,6 @@ class AppPrefs(
             const val HIDE_KEY_SYMBOL = "hide_key_symbol"
             const val HIDE_KEY_HINT = "hide_key_hint"
 
-            const val SOUND_ON_KEYPRESS = "sound_on_keypress"
-            const val KEY_SOUND_VOLUME = "sound_volume"
-            const val USE_CUSTOM_SOUND_EFFECT = "custom_sound_effect_enabled"
-            const val CUSTOM_SOUND_EFFECT = "custom_sound_effect_name"
-            const val VIBRATE_ON_KEY_PRESS = "vibrate_on_key_press"
-            const val VIBRATE_ON_KEY_RELEASE = "vibrate_on_key_release"
-            const val VIBRATE_ON_KEY_REPEAT = "vibrate_on_key_repeat"
-            const val VIBRATION_DURATION = "vibration_duration"
-            const val VIBRATION_AMPLITUDE = "vibration_amplitude"
-            const val SPEAK_ON_KEYPRESS = "speak_on_keypress"
-            const val SPEAK_ON_COMMIT = "speak_on_commit"
             const val POPUP_ON_KEY_PRESS = "show_key_popup"
             const val EXPAND_KEYPRESS_AREA = "expand_keypress_area"
             const val SWIPE_TRAVEL = "key_swipe_travel"
@@ -189,62 +176,6 @@ class AppPrefs(
         val hideKeySymbol = switch(R.string.hide_key_symbol, HIDE_KEY_SYMBOL, false)
         val hideKeyHint = switch(R.string.hide_key_hint, HIDE_KEY_HINT, false)
 
-        val soundOnKeyPress = switch(R.string.sound_on_keypress, SOUND_ON_KEYPRESS, false)
-        val soundVolume = int(
-            R.string.sound_volume,
-            KEY_SOUND_VOLUME,
-            10,
-            0,
-            100,
-            "%",
-            defaultLabel = R.string.system_default,
-        ) { soundOnKeyPress.getValue() }
-
-        val useCustomSoundEffect = switch(
-            R.string.custom_sound_effect_enabled,
-            USE_CUSTOM_SOUND_EFFECT,
-            false,
-        ) { soundOnKeyPress.getValue() }
-        val customSoundEffect = string(
-            R.string.custom_sound_effect_name,
-            CUSTOM_SOUND_EFFECT,
-            "",
-        ) { soundOnKeyPress.getValue() && useCustomSoundEffect.getValue() }
-
-        val vibrateOnKeyPress = switch(R.string.vibrate_on_key_press, VIBRATE_ON_KEY_PRESS, false)
-        val vibrateOnKeyRelease = switch(
-            R.string.vibrate_on_key_release,
-            VIBRATE_ON_KEY_RELEASE,
-            false,
-        ) { vibrateOnKeyPress.getValue() }
-
-        val vibrateOnKeyRepeat = switch(
-            R.string.vibrate_on_key_repeat,
-            VIBRATE_ON_KEY_REPEAT,
-            false,
-        ) { vibrateOnKeyPress.getValue() }
-
-        val vibrationDuration = int(
-            R.string.vibration_duration,
-            VIBRATION_DURATION,
-            0,
-            0,
-            100,
-            "ms",
-            defaultLabel = R.string.system_default,
-        ) { vibrateOnKeyPress.getValue() }
-
-        val vibrationAmplitude = int(
-            R.string.vibration_amplitude,
-            VIBRATION_AMPLITUDE,
-            0,
-            0,
-            255,
-            defaultLabel = R.string.system_default,
-        ) { vibrateOnKeyPress.getValue() }
-
-        val speakOnKeyPress = switch(R.string.speak_on_keypress, SPEAK_ON_KEYPRESS, false)
-        val speakOnCommit = switch(R.string.speak_on_commit, SPEAK_ON_COMMIT, false)
         val popupOnKeyPress = switch(R.string.popup_on_key_press, POPUP_ON_KEY_PRESS, false)
         val expandKeypressArea = switch(R.string.expand_keypress_area_to_edge, EXPAND_KEYPRESS_AREA, false)
         val swipeTravel = int(
@@ -376,18 +307,10 @@ class AppPrefs(
             const val EXTERNAL_RIME_TREE_URI = "profile_external_rime_tree_uri"
             const val EXTERNAL_RIME_DISPLAY_NAME = "profile_external_rime_display_name"
             const val DATA_STORAGE_MODE = "profile_data_storage_mode"
-            const val PERIODIC_BACKGROUND_SYNC = "periodic_background_sync"
-            const val PERIODIC_BACKGROUND_SYNC_INTERVAL = "periodic_background_sync_interval"
-            const val LAST_BACKGROUND_SYNC_STATUS = "last_background_sync_status"
-            const val LAST_BACKGROUND_SYNC_TIME = "last_background_sync_time"
         }
 
         val dataStorageMode = enum(R.string.data_storage_mode, DATA_STORAGE_MODE, DataStorageMode.EXTERNAL_SYNC)
         val externalRimeTreeUri = string(EXTERNAL_RIME_TREE_URI, "")
-        val periodicBackgroundSync = bool(PERIODIC_BACKGROUND_SYNC, false)
-        val periodicBackgroundSyncInterval = int(PERIODIC_BACKGROUND_SYNC_INTERVAL, 30)
-        val lastBackgroundSyncStatus = bool(LAST_BACKGROUND_SYNC_STATUS, false)
-        val lastBackgroundSyncTime = long(LAST_BACKGROUND_SYNC_TIME, 0L)
     }
 
     class Clipboard(

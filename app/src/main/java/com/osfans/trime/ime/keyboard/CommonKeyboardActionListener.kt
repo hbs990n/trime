@@ -29,7 +29,6 @@ import com.osfans.trime.ime.switches.SwitchOptionWindow
 import com.osfans.trime.ime.symbol.LiquidWindow
 import com.osfans.trime.ime.window.BoardWindowManager
 import com.osfans.trime.ui.main.settings.ColorPickerDialog
-import com.osfans.trime.ui.main.settings.SoundEffectPickerDialog
 import com.osfans.trime.ui.main.settings.ThemePickerDialog
 import com.osfans.trime.util.AppUtils
 import com.osfans.trime.util.InputMethodUtils
@@ -82,12 +81,6 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
         }
     }
 
-    private fun showSoundEffectPicker() {
-        showDialog {
-            SoundEffectPickerDialog.build(service.lifecycleScope, context)
-        }
-    }
-
     private fun showEnabledSchemaPicker() {
         showDialog { api ->
             EnabledSchemaPickerDialog.build(api, service.lifecycleScope, context) {
@@ -112,10 +105,6 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
     val listener by lazy {
         object : KeyboardActionListener {
             override fun onPress(keyEventCode: Int) {
-                InputFeedbackManager.run {
-                    keyPressSound(keyEventCode)
-                    keyPressSpeak(keyEventCode)
-                }
             }
 
             override fun onAction(action: KeyAction) {
@@ -315,7 +304,6 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
                     "theme" -> showThemePicker()
                     "color" -> showColorPicker()
                     "schema" -> AppUtils.launchMainToSchemaList(context)
-                    "sound" -> showSoundEffectPicker()
                     else -> AppUtils.launchMainActivity(service)
                 }
             }

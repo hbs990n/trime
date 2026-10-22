@@ -99,7 +99,6 @@ open class GestureFrame(context: Context) : FrameLayout(context) {
 
                 drawableHotspotChanged(x, y)
                 isPressed = true
-                if (vibrateOnKeyPress) InputFeedbackManager.keyPressVibrate(this)
                 onPress?.invoke()
 
                 if (hasLongPress || isRepeatable || hasPopup) {
@@ -153,7 +152,6 @@ open class GestureFrame(context: Context) : FrameLayout(context) {
                 val dy = y - startY
 
                 isPressed = false
-                if (vibrateOnKeyRelease) InputFeedbackManager.keyPressVibrate(this)
                 cancelJobs()
 
                 if (slideActivated) {
@@ -227,8 +225,6 @@ open class GestureFrame(context: Context) : FrameLayout(context) {
             if (swipeTriggered || slideActivated) return@launch
             isLongPressed = true
 
-            if (vibrateOnKeyPress) InputFeedbackManager.keyPressVibrate(this@GestureFrame, true)
-
             if (isRepeatable) {
                 startRepeatJob()
             } else {
@@ -241,7 +237,6 @@ open class GestureFrame(context: Context) : FrameLayout(context) {
         repeatJob = lifecycleScope.launch {
             try {
                 while (true) {
-                    if (vibrateOnKeyRepeat) InputFeedbackManager.keyPressVibrate(this@GestureFrame)
                     dispatchBehavior(KeyBehavior.CLICK, true)
                     delay(repeatInterval.toLong())
                 }
@@ -327,8 +322,5 @@ open class GestureFrame(context: Context) : FrameLayout(context) {
         private val repeatInterval by AppPrefs.defaultInstance().keyboard.repeatInterval
         private val doubleTapTimeout by AppPrefs.defaultInstance().keyboard.doubleTapTimeout
         private val slideStepSize by AppPrefs.defaultInstance().keyboard.slideStepSize
-        private val vibrateOnKeyPress by AppPrefs.defaultInstance().keyboard.vibrateOnKeyPress
-        private val vibrateOnKeyRelease by AppPrefs.defaultInstance().keyboard.vibrateOnKeyRelease
-        private val vibrateOnKeyRepeat by AppPrefs.defaultInstance().keyboard.vibrateOnKeyRepeat
     }
 }

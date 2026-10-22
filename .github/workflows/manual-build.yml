@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2015 - 2025 Rime community
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+name: Manual Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    env:
+      BUILD_ABI: armeabi-v7a,arm64-v8a,x86,x86_64
+    steps:
+      - name: Fetch source code
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: 25
+          cache: "gradle"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "cmake;3.31.6"
+
+      - name: Apply JNI patches
+        run: |
+          git apply --directory=app/src/main/jni/librime-lua-deps patches/lua.patch
+
+      - name: Build debug Trime
+        run: |
+          ./gradlew :app:assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: trime-debug
+          path: app/build/outputs/apk/debug/
+          retention-days: 90
