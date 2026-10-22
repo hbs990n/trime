@@ -167,6 +167,9 @@
     <string name="data_path_permission_revoked">Data folder access was revoked. Please select the folder again.</string>
     <string name="grant_permission">Grant permission</string>
     <string name="notification_permission_title">No Notification Permission</string>
+    <string name="asr_microphone_permission_required">Microphone permission is required for voice input</string>
+    <string name="asr_microphone_permission_title">No Microphone Permission</string>
+    <string name="asr_microphone_permission_message">Without the microphone permission, voice input cannot record audio.</string>
     <string name="notification_permission_message">Without the permission to post notifications, we are not able to notify you when some time-consuming operations are done.</string>
     <string name="rime_daemon">Rime Daemon</string>
     <string name="restarting_rime">Restarting Rime</string>

@@ -181,6 +181,7 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
                     "select_candidate" -> handleSelectCandidate(arg)
                     "switch_hide_key_symbol" -> switchHideKeySymbol()
                     "switch_hide_key_hint" -> switchHideKeyHint()
+                    "asr_voice" -> service.toggleVoiceInput()
                     else -> handleIntentAction(action.command, arg)
                 }
             }

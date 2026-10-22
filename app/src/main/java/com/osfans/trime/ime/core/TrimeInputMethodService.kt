@@ -45,6 +45,7 @@ import com.osfans.trime.data.prefs.PreferenceDelegateProvider
 import com.osfans.trime.data.theme.ColorManager
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.data.theme.ThemeScope
+import com.osfans.trime.ime.asr.AsrImeBridge
 import com.osfans.trime.ime.composition.CandidatesView
 import com.osfans.trime.receiver.RimeIntentReceiver
 import com.osfans.trime.util.any
@@ -91,6 +92,14 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     private var lastCommittedText: String = ""
 
     private var composingText: String = ""
+
+    private var asrBridge: AsrImeBridge? = null
+
+    /** Starts or stops the voice input. */
+    fun toggleVoiceInput() {
+        val bridge = asrBridge ?: AsrImeBridge(this).also { asrBridge = it }
+        bridge.toggle()
+    }
 
     private var cursorUpdateIndex = 0
 
@@ -329,6 +338,7 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
 
     override fun onDestroy() {
         inputView = null
+        asrBridge?.cancel()
         recreateInputViewPrefs.forEach {
             it.unregisterOnChangeListener(recreateInputViewListener)
         }
@@ -545,6 +555,8 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         restarting: Boolean,
     ) {
         composingText = ""
+        // the recogniser is bound to the editor it started in
+        asrBridge?.cancel()
         Timber.d("onStartInput: restarting=$restarting")
         val isNullType = attribute.inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_NULL
         postRimeJob {

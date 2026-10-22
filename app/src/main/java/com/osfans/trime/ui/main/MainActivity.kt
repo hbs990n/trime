@@ -142,6 +142,7 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         processIntent(intent)
         checkNotificationPermission()
+        checkMicrophonePermission()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -241,7 +242,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkMicrophonePermission() {
+        if (!intent.getBooleanExtra(EXTRA_REQUEST_MIC_PERMISSION, false)) return
+        if (XXPermissions.isGranted(this, PERMISSION_RECORD_AUDIO)) return
+        AlertDialog
+            .Builder(this)
+            .setIconAttribute(android.R.attr.alertDialogIcon)
+            .setTitle(R.string.asr_microphone_permission_title)
+            .setMessage(R.string.asr_microphone_permission_message)
+            .setPositiveButton(R.string.grant_permission) { _, _ ->
+                XXPermissions
+                    .with(this)
+                    .permission(PERMISSION_RECORD_AUDIO)
+                    .request(null)
+            }.setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     companion object {
         const val EXTRA_SETTINGS_ROUTE = "${BuildConfig.APPLICATION_ID}.EXTRA_SETTINGS_ROUTE"
+
+        /** Set by the input method when the user asks for voice input without the permission. */
+        const val EXTRA_REQUEST_MIC_PERMISSION = "${BuildConfig.APPLICATION_ID}.EXTRA_REQUEST_MIC_PERMISSION"
+
+        private const val PERMISSION_RECORD_AUDIO = "android.permission.RECORD_AUDIO"
     }
 }
