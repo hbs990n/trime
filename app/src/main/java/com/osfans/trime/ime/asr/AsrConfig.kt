@@ -5,7 +5,6 @@
 
 package com.osfans.trime.ime.asr
 
-import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import org.json.JSONArray
@@ -58,6 +57,14 @@ object AsrConfig {
         "Mixtral", "OpenJourney",
     )
 
+    /** Query string copied verbatim from the official client. */
+    private const val QUERY =
+        "aid=401734&app_name=oime&channel=huawei_401734_64_ziran&device_brand=Android" +
+            "&device_id=692058704868971&device_platform=android&device_type=AOSP%20on%20ARM64" +
+            "&did=692058704868971&forwarded=&iid=692058705102443&install_id=692058705102443" +
+            "&mobile=&os_version=13&target=&update_version_code=100406010&user_agent=" +
+            "&version_code=100406010&version_name=1.4.6"
+
     /** Context handed to the recogniser: what the user already typed in the current field. */
     data class Context(
         val appPackage: String,
@@ -66,31 +73,7 @@ object AsrConfig {
         val inputType: String = "TYPE_CLASS_TEXT",
     )
 
-    fun buildUrl(): String = Uri.Builder()
-        .scheme("wss")
-        .authority(HOST)
-        .port(443)
-        .path(PATH)
-        .appendQueryParameter("aid", APP_ID)
-        .appendQueryParameter("app_name", "oime")
-        .appendQueryParameter("channel", CHANNEL)
-        .appendQueryParameter("device_brand", "Android")
-        .appendQueryParameter("device_id", DEVICE_ID)
-        .appendQueryParameter("device_platform", "android")
-        .appendQueryParameter("device_type", deviceType())
-        .appendQueryParameter("did", DEVICE_ID)
-        .appendQueryParameter("forwarded", "")
-        .appendQueryParameter("iid", INSTALL_ID)
-        .appendQueryParameter("install_id", INSTALL_ID)
-        .appendQueryParameter("mobile", "")
-        .appendQueryParameter("os_version", Build.VERSION.RELEASE.ifEmpty { "13" })
-        .appendQueryParameter("target", "")
-        .appendQueryParameter("update_version_code", "100406010")
-        .appendQueryParameter("user_agent", "")
-        .appendQueryParameter("version_code", "100406010")
-        .appendQueryParameter("version_name", APP_VERSION)
-        .build()
-        .toString()
+    fun buildUrl(): String = "wss://$HOST:443$PATH?$QUERY"
 
     fun buildHeaders(): Map<String, String> = mapOf(
         "User-Agent" to USER_AGENT,

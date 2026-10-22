@@ -8,14 +8,13 @@ package com.osfans.trime.ime.asr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
+import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -135,7 +134,7 @@ class DoubaoAsrClient(
         listener.onResult(text, isFinal)
     }
 
-    private fun ByteArray.toBinary() = toRequestBody("application/octet-stream".toMediaType())
+    private fun ByteArray.toBinary(): ByteString = toByteString()
 
     /** One client for the whole process; every round only opens a new socket. */
     private object SharedHttpClient {

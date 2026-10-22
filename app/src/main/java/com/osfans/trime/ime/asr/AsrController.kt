@@ -157,7 +157,7 @@ class AsrController(
                 withContext(Dispatchers.Main) { callback.onError("麦克风启动失败") }
                 return
             }
-            val buffer = ByteArray(max(AsrConfig.FRAME_BYTES * 4, recorder.bufferSize))
+            val buffer = ByteArray(max(AsrConfig.FRAME_BYTES * 4, recorder.bufferSizeInBytes))
             val frame = ByteArray(AsrConfig.FRAME_BYTES)
             var filled = 0
             while (currentCoroutineContext().isActive) {

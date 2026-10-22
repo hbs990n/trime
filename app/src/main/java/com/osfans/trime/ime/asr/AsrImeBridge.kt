@@ -115,8 +115,6 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
         android.text.InputType.TYPE_CLASS_TEXT -> "TYPE_CLASS_TEXT"
         android.text.InputType.TYPE_CLASS_NUMBER -> "TYPE_CLASS_NUMBER"
         android.text.InputType.TYPE_CLASS_PHONE -> "TYPE_CLASS_PHONE"
-        android.text.InputType.TYPE_CLASS_EMAIL -> "TYPE_CLASS_EMAIL"
-        android.text.InputType.TYPE_CLASS_URL -> "TYPE_CLASS_URL"
         else -> "TYPE_CLASS_TEXT"
     }
 
