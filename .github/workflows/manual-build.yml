@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-26.04
     env:
       BUILD_ABI: armeabi-v7a,arm64-v8a,x86,x86_64
+      CI_NAME: Manual Build
+      BUILD_GIT_REPO: https://github.com/hbs990n/trime
     steps:
       - name: Fetch source code
         uses: actions/checkout@v7
