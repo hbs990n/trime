@@ -19,7 +19,6 @@ import com.osfans.trime.ime.candidates.popup.PopupCandidatesLayout
 import com.osfans.trime.ime.candidates.popup.PopupCandidatesMode
 import com.osfans.trime.ime.composition.PopupPosition
 import com.osfans.trime.ime.core.InlinePreeditMode
-import com.osfans.trime.util.InputMethodUtils
 import com.osfans.trime.util.appContext
 import java.lang.ref.WeakReference
 
@@ -97,21 +96,10 @@ class AppPrefs(
         companion object {
             const val INLINE_PREEDIT_MODE = "inline_preedit_mode"
             const val ASCII_SWITCH_TIPS = "ascii_switch_tips"
-            const val PREFERRED_VOICE_INPUT = "preferred_voice_input"
         }
 
         val inlinePreeditMode = enum(R.string.inline_preedit_mode, INLINE_PREEDIT_MODE, InlinePreeditMode.DISABLE)
         val asciiSwitchTips = switch(R.string.ascii_switch_tips, ASCII_SWITCH_TIPS, true)
-
-        val preferredVoiceInput = list(
-            R.string.preferred_voice_input,
-            PREFERRED_VOICE_INPUT,
-            "",
-            { InputMethodUtils.voiceInputMethods().map { it.first.packageName } },
-            { ctx ->
-                InputMethodUtils.voiceInputMethods().map { it.first.loadLabel(ctx.packageManager) }
-            },
-        )
     }
 
     /**

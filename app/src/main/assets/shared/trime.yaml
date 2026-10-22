@@ -870,7 +870,6 @@ preset_keys:
   POWER: {label: 電源, send: POWER}
   SEARCH: {label: 搜尋, send: SEARCH}
   SLEEP: {label: 休眠, send: SLEEP}
-  VOICE_ASSIST: {label: 語音, send: VOICE_ASSIST}
   VOLUME_DOWN: {label: 音量-, send: VOLUME_DOWN}
   VOLUME_UP: {label: 音量+, send: VOLUME_UP}
   VOLUME_MUTE: {label: 靜音, send: VOLUME_MUTE}
@@ -1267,7 +1266,7 @@ preset_keyboards:
     - {click: Shift_L}
     - {click: Keyboard_symbols, long_click: Keyboard_number}
     - {click: Mode_switch, long_click: Menu}
-    - {click: space, long_click: VOICE_ASSIST, width: 30}
+    - {click: space, width: 30}
     - {click: "'", long_click: '"'}
     - {click: BackSpace, swipe_right: Delete, swipe_left: Escape, width: 15}
     - {click: Return, long_click: CommitComment, width: 15}
@@ -1663,7 +1662,7 @@ preset_keyboards:
     - {click: Shift_L}
     - {click: Keyboard_symbols, long_click: Keyboard_number}
     - {click: Mode_switch, long_click: Menu}
-    - {click: space, long_click: VOICE_ASSIST, width: 30}
+    - {click: space, width: 30}
     - {click: "'", long_click: '"'}
     - {click: BackSpace, swipe_right: Delete, swipe_left: Escape, width: 15}
     - {click: Return, long_click: CommitComment, width: 15}

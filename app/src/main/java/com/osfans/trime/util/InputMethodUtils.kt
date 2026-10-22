@@ -10,8 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import android.view.inputmethod.InputMethodInfo
-import android.view.inputmethod.InputMethodSubtype
 import com.osfans.trime.BuildConfig
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import splitties.systemservices.inputMethodManager
@@ -53,34 +51,5 @@ object InputMethodUtils {
     fun showImePicker(): Boolean {
         inputMethodManager.showInputMethodPicker()
         return true
-    }
-
-    fun voiceInputMethods(): List<Pair<InputMethodInfo, InputMethodSubtype>> = inputMethodManager
-        .enabledInputMethodList
-        .mapNotNull { info ->
-            for (i in 0 until info.subtypeCount) {
-                val subType = info.getSubtypeAt(i)
-                if (subType.mode.lowercase() == "voice") {
-                    return@mapNotNull info to subType
-                }
-            }
-            return@mapNotNull null
-        }
-
-    fun firstVoiceInput(): Pair<String, InputMethodSubtype>? = voiceInputMethods()
-        .firstNotNullOfOrNull { (info, subType) -> info.id to subType }
-
-    fun switchInputMethod(
-        service: TrimeInputMethodService,
-        id: String,
-        subtype: InputMethodSubtype,
-    ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            service.switchInputMethod(id, subtype)
-        } else {
-            @Suppress("DEPRECATION")
-            inputMethodManager
-                .setInputMethodAndSubtype(service.window.window!!.attributes.token, id, subtype)
-        }
     }
 }
