@@ -17,7 +17,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import kotlin.math.max
@@ -60,11 +59,16 @@ class AsrController(
         set(value) {
             if (field != value) {
                 field = value
-                callback.onStateChanged(value)
+                notify { callback.onStateChanged(value) }
             }
         }
 
     val currentState: State get() = state
+
+    /** Callbacks may originate from OkHttp threads, so always hop back to the main thread. */
+    private fun notify(block: () -> Unit) {
+        scope.launch(Dispatchers.Main) { block() }
+    }
 
     fun start(context: AsrConfig.Context) {
         if (state != State.IDLE) return
@@ -81,7 +85,7 @@ class AsrController(
 
             override fun onResult(text: String, isFinal: Boolean) {
                 if (isFinal) newSession.finalText = text
-                callback.onPartialText(text)
+                notify { callback.onPartialText(text) }
             }
 
             override fun onSessionFinished() {
@@ -90,7 +94,7 @@ class AsrController(
 
             override fun onFailure(message: String) {
                 if (session !== newSession) return
-                callback.onError(message)
+                notify { callback.onError(message) }
                 cleanup()
             }
         })
@@ -101,7 +105,7 @@ class AsrController(
             val started = withTimeoutOrNull(SESSION_START_TIMEOUT) { newSession.started.await() }
             if (started == null) {
                 if (session === newSession) {
-                    callback.onError("连接超时")
+                    notify { callback.onError("连接超时") }
                     cleanup()
                 }
                 return@launch
@@ -125,7 +129,7 @@ class AsrController(
             if (session !== current) return@launch
             val text = current.finalText
             cleanup()
-            callback.onFinalText(text)
+            notify { callback.onFinalText(text) }
         }
     }
 
@@ -148,13 +152,13 @@ class AsrController(
     private suspend fun captureAudio(asrClient: DoubaoAsrClient) {
         val recorder = createRecorder()
         if (recorder == null) {
-            withContext(Dispatchers.Main) { callback.onError("无法打开麦克风") }
+            notify { callback.onError("无法打开麦克风") }
             return
         }
         try {
             recorder.startRecording()
             if (recorder.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
-                withContext(Dispatchers.Main) { callback.onError("麦克风启动失败") }
+                notify { callback.onError("麦克风启动失败") }
                 return
             }
             val buffer = ByteArray(AsrConfig.FRAME_BYTES * 8)
@@ -177,7 +181,7 @@ class AsrController(
             }
         } catch (e: Exception) {
             Timber.w(e, "ASR: audio capture failed")
-            withContext(Dispatchers.Main) { callback.onError(e.message ?: "录音失败") }
+            notify { callback.onError(e.message ?: "录音失败") }
         } finally {
             try {
                 if (recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {

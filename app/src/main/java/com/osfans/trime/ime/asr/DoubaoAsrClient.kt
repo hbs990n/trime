@@ -86,8 +86,12 @@ class DoubaoAsrClient(
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    Timber.w(t, "ASR: websocket failed")
-                    listener.onFailure(t.message ?: t.javaClass.simpleName)
+                    Timber.w(t, "ASR: websocket failed, httpCode=%s", response?.code)
+                    val detail = buildString {
+                        append(t.message ?: t.javaClass.simpleName)
+                        response?.let { append(" (HTTP ${it.code})") }
+                    }
+                    listener.onFailure(detail)
                 }
             },
         )
