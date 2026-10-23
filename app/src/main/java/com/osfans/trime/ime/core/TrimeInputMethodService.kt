@@ -10,7 +10,9 @@ import android.app.Dialog
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.RectF
+import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Bundle
@@ -212,7 +214,9 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         registerReceiver()
         super.onCreate()
         Timber.d("onCreate")
+        window.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         decorView = window.window!!.decorView
+        decorView.setBackgroundColor(Color.TRANSPARENT)
         contentView = decorView.findViewById(android.R.id.content)
         lastKnownConfig = Configuration(resources.configuration)
     }
@@ -495,8 +499,9 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     private val inputViewLocation = intArrayOf(0, 0)
 
     override fun onComputeInsets(outInsets: Insets) {
-        if (inputDeviceManager.useVirtualKeyboard) {
-            inputView?.keyboardView?.getLocationInWindow(inputViewLocation)
+        val currentInputView = inputView
+        if (inputDeviceManager.useVirtualKeyboard && currentInputView != null) {
+            currentInputView.keyboardView.getLocationInWindow(inputViewLocation)
             outInsets.apply {
                 contentTopInsets = inputViewLocation[1]
                 visibleTopInsets = inputViewLocation[1]
@@ -514,8 +519,10 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     }
 
     // always show InputView since we delegate CandidatesView's visibility to it
+    // but never show an empty window before the theme is ready, otherwise the
+    // full-screen IME window paints an opaque background over the whole screen
     @SuppressLint("MissingSuperCall")
-    override fun onEvaluateInputViewShown() = true
+    override fun onEvaluateInputViewShown() = themeScope != null
 
     fun superEvaluateInputViewShown() = super.onEvaluateInputViewShown()
 
@@ -548,6 +555,7 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         isCandidatesOnly: Boolean,
     ) {
         win.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        win.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     }
 
     override fun onStartInput(
