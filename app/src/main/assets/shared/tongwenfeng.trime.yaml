@@ -1067,8 +1067,8 @@ tool_bar:
   asr_voice_button: &asr_voice_button
     foreground:
       style: "语音"
-      font_size: 14
-      padding: 6
+      font_size: 12
+      padding: 4
     action: asr_voice
 
   # 右侧按钮列表（从右向左排列）
