@@ -297,7 +297,7 @@ class AppPrefs(
             const val DATA_STORAGE_MODE = "profile_data_storage_mode"
         }
 
-        val dataStorageMode = enum(R.string.data_storage_mode, DATA_STORAGE_MODE, DataStorageMode.EXTERNAL_SYNC)
+        val dataStorageMode = enum(R.string.data_storage_mode, DATA_STORAGE_MODE, DataStorageMode.APP_STORAGE)
         val externalRimeTreeUri = string(EXTERNAL_RIME_TREE_URI, "")
     }
 
