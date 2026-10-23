@@ -30,6 +30,7 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
         object : AsrController.Callback {
             override fun onStateChanged(state: AsrController.State) {
                 Timber.d("ASR state: $state")
+                service.setVoiceInputIndicator(state != AsrController.State.IDLE)
             }
 
             override fun onPartialText(text: String) {
@@ -72,9 +73,26 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
         }
     }
 
+    /** Ends the running round and keeps whatever has been recognised so far. */
+    fun finish() {
+        when (controller.currentState) {
+            AsrController.State.RECORDING -> controller.stop()
+            AsrController.State.CONNECTING -> controller.cancel()
+            else -> Unit
+        }
+    }
+
+    /** Ends the running round and drops the partial transcript. */
     fun cancel() {
         controller.cancel()
-        service.currentInputConnection?.finishComposingText()
+        if (hasComposingText) {
+            service.currentInputConnection?.let { ic ->
+                runCatching {
+                    ic.setComposingText("", 1)
+                    ic.finishComposingText()
+                }
+            }
+        }
         hasComposingText = false
     }
 

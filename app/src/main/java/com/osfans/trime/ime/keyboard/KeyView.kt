@@ -37,6 +37,9 @@ class KeyView(
     private val service: TrimeInputMethodService
         get() = keyboardView.service
 
+    private val isVoiceInputKey: Boolean
+        get() = key.isVoiceInputKey
+
     private val popup: PopupDelegate
         get() = keyboardView.popup
 
@@ -76,12 +79,14 @@ class KeyView(
         isSlideCursor = key.click?.isSlideCursor ?: false
         isSlideDelete = key.click?.isSlideDelete ?: false
         hasLongPress = key.hasAction(KeyBehavior.LONG_CLICK)
+        if (isVoiceInputKey) longPressTimeoutOverride = VOICE_LONG_PRESS_TIMEOUT
         // Shift键始终参与双击检测，以便支持双击锁定大写（可通过设置项 hookShiftLock 关闭）
         hasDouble = key.hasAction(KeyBehavior.DOUBLE_CLICK) || key.isShift
         hasLazyDouble = key.hasAction(KeyBehavior.LAZY_DOUBLE_CLICK)
         hasPopup = key.popup.isNotEmpty()
 
         onPress = {
+            if (!isVoiceInputKey && service.isVoiceInputActive) service.stopVoiceInput()
             if (keyboard.firstPressedKeyIndex == -1) keyboard.firstPressedKeyIndex = id
             setPressedState(true)
             key.getCode(KeyBehavior.CLICK).let { keyboardActionListener.onPress(it) }
@@ -105,9 +110,15 @@ class KeyView(
             } else {
                 when (behavior) {
                     KeyBehavior.CLICK -> {
-                        val pressedIdx = keyboard.firstPressedKeyIndex
-                        val actionBehavior = if (pressedIdx != -1 && pressedIdx != id) KeyBehavior.COMBO else behavior
-                        key.getAction(actionBehavior)?.let { processKeyAction(it, actionBehavior) }
+                        if (isVoiceInputKey && service.isVoiceInputActive) {
+                            // A tap on the voice key stops the running recognition instead of
+                            // inserting a space.
+                            service.toggleVoiceInput()
+                        } else {
+                            val pressedIdx = keyboard.firstPressedKeyIndex
+                            val actionBehavior = if (pressedIdx != -1 && pressedIdx != id) KeyBehavior.COMBO else behavior
+                            key.getAction(actionBehavior)?.let { processKeyAction(it, actionBehavior) }
+                        }
                     }
 
                     KeyBehavior.DOUBLE_CLICK, KeyBehavior.LAZY_DOUBLE_CLICK,
@@ -429,5 +440,9 @@ class KeyView(
                 canvas.drawText(lines[i], centerX, lineY, symbolPaint)
             }
         }
+    }
+
+    private companion object {
+        const val VOICE_LONG_PRESS_TIMEOUT = 2000L
     }
 }

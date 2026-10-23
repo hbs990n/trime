@@ -55,6 +55,7 @@ class AsrController(
     private var client: DoubaoAsrClient? = null
     private var captureJob: Job? = null
     private var startJob: Job? = null
+    private var maxDurationJob: Job? = null
     private var state: State = State.IDLE
         set(value) {
             if (field != value) {
@@ -113,6 +114,10 @@ class AsrController(
             if (session !== newSession) return@launch
             state = State.RECORDING
             captureJob = launch(Dispatchers.IO) { captureAudio(newClient) }
+            maxDurationJob = scope.launch {
+                delay(MAX_SESSION_DURATION)
+                if (session === newSession && state == State.RECORDING) stop()
+            }
         }
     }
 
@@ -140,6 +145,8 @@ class AsrController(
     private fun cleanup() {
         startJob?.cancel()
         startJob = null
+        maxDurationJob?.cancel()
+        maxDurationJob = null
         captureJob?.cancel()
         captureJob = null
         client?.cancel()
@@ -153,12 +160,14 @@ class AsrController(
         val recorder = createRecorder()
         if (recorder == null) {
             notify { callback.onError("无法打开麦克风") }
+            cleanup()
             return
         }
         try {
             recorder.startRecording()
             if (recorder.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
                 notify { callback.onError("麦克风启动失败") }
+                cleanup()
                 return
             }
             val buffer = ByteArray(AsrConfig.FRAME_BYTES * 8)
@@ -182,6 +191,7 @@ class AsrController(
         } catch (e: Exception) {
             Timber.w(e, "ASR: audio capture failed")
             notify { callback.onError(e.message ?: "录音失败") }
+            cleanup()
         } finally {
             try {
                 if (recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
@@ -223,6 +233,9 @@ class AsrController(
     private companion object {
         const val SESSION_START_TIMEOUT = 10_000L
         const val SESSION_FINISH_TIMEOUT = 8_000L
+
+        /** Hard upper bound so a forgotten session cannot keep the microphone open. */
+        const val MAX_SESSION_DURATION = 180_000L
 
         /** Prefer unprocessed audio; fall back to the plain microphone. */
         val AUDIO_SOURCES = intArrayOf(

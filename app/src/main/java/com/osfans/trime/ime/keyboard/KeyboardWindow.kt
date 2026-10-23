@@ -92,6 +92,7 @@ class KeyboardWindow(di: DI) :
     private var lastIsPortrait: Boolean? = null
     private var containerWidth: Int = 0
     private var allowedWidth: Int = 0
+    private var voiceInputActive = false
 
     private val onKeyboardViewLayoutChangeListener =
         View.OnLayoutChangeListener { v, left, _, right, _, _, _, _, _ ->
@@ -199,6 +200,25 @@ class KeyboardWindow(di: DI) :
                 add(it, lParams(matchParent, matchParent))
             }
         }
+        applyVoiceInputIndicator()
+    }
+
+    fun setVoiceInputIndicator(active: Boolean) {
+        voiceInputActive = active
+        applyVoiceInputIndicator()
+    }
+
+    private fun applyVoiceInputIndicator() {
+        val keyboard = activeKeyboard ?: return
+        val label = if (voiceInputActive) context.getString(R.string.asr_recognizing) else null
+        var changed = false
+        keyboard.keys.forEach { key ->
+            if (key.isVoiceInputKey && key.labelOverride != label) {
+                key.labelOverride = label
+                changed = true
+            }
+        }
+        if (changed) currentKeyboardView?.invalidateAllKeys()
     }
 
     private fun smartMatchKeyboard(): String {

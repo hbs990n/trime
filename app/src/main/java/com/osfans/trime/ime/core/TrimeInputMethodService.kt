@@ -7,6 +7,7 @@ package com.osfans.trime.ime.core
 
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
@@ -101,6 +102,24 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     fun toggleVoiceInput() {
         val bridge = asrBridge ?: AsrImeBridge(this).also { asrBridge = it }
         bridge.toggle()
+    }
+
+    /** Whether a recognition round is running (connecting, recording or finalizing). */
+    val isVoiceInputActive: Boolean
+        get() = asrBridge?.isActive == true
+
+    /** Ends the running recognition and keeps the transcript. */
+    fun stopVoiceInput() {
+        asrBridge?.finish()
+    }
+
+    /** Ends the running recognition without committing anything. */
+    fun cancelVoiceInput() {
+        asrBridge?.cancel()
+    }
+
+    fun setVoiceInputIndicator(active: Boolean) {
+        inputView?.setVoiceInputIndicator(active)
     }
 
     private var cursorUpdateIndex = 0
@@ -380,6 +399,7 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
      * https://github.com/fcitx5-android/fcitx5-android/blob/fe3a618c8fd18842305d2f8ec2880fcc67ec1679/app/src/main/java/org/fcitx/fcitx5/android/input/FcitxInputMethodService.kt#L523-#L547
      */
     override fun onConfigurationChanged(newConfig: Configuration) {
+        cancelVoiceInput()
         postRimeJob { clearComposition() }
         val keyboardUiModeMask = ActivityInfo.CONFIG_KEYBOARD or
             ActivityInfo.CONFIG_KEYBOARD_HIDDEN or
@@ -601,8 +621,14 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         }
     }
 
+    override fun onFinishInput() {
+        cancelVoiceInput()
+        super.onFinishInput()
+    }
+
     override fun onFinishInputView(finishingInput: Boolean) {
         Timber.d("onFinishInputView: finishingInput=$finishingInput")
+        cancelVoiceInput()
         decorLocationUpdated = false
         inputView?.dismissCandidateActionMenu()
         candidatesView?.dismissCandidateActionMenu()
@@ -615,6 +641,16 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         postRimeJob {
             clearComposition()
         }
+    }
+
+    override fun onWindowHidden() {
+        cancelVoiceInput()
+        super.onWindowHidden()
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        cancelVoiceInput()
+        return super.onUnbind(intent)
     }
 
     fun commitText(text: String) {

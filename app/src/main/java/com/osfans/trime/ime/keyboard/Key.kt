@@ -73,6 +73,9 @@ class Key(
 
     private val label = keyDef?.label ?: ""
     private val labelSymbol = keyDef?.labelSymbol ?: ""
+
+    /** Transient label override, e.g. while voice input is recording. */
+    var labelOverride: String? = null
     val hint: String = keyDef?.hint ?: ""
     val popup = keyDef?.popup ?: emptyList()
 
@@ -266,6 +269,9 @@ class Key(
     val longClick: KeyAction?
         get() = keyActions[KeyBehavior.LONG_CLICK]
 
+    val isVoiceInputKey: Boolean
+        get() = longClick?.command == "asr_voice"
+
     fun hasAction(behavior: KeyBehavior): Boolean = keyActions[behavior] != null
 
     fun getAction(behavior: KeyBehavior): KeyAction? = keyActions[behavior]?.takeIf { behavior != KeyBehavior.CLICK } ?: checkKeyAction(sendBindings) ?: click
@@ -289,13 +295,16 @@ class Key(
 
     fun getCode(behavior: KeyBehavior): Int = getAction(behavior)!!.code
 
-    fun getLabel(): String = when {
-        label.isNotEmpty() &&
-            keyAction == click &&
-            !keyActions.containsKey(KeyBehavior.ASCII) &&
-            !rime.run { statusCached }.let { it.isAsciiMode || it.isAsciiPunct } -> label
+    fun getLabel(): String {
+        labelOverride?.let { return it }
+        return when {
+            label.isNotEmpty() &&
+                keyAction == click &&
+                !keyActions.containsKey(KeyBehavior.ASCII) &&
+                !rime.run { statusCached }.let { it.isAsciiMode || it.isAsciiPunct } -> label
 
-        else -> keyAction!!.getLabel(parent) // 中文狀態顯示標籤
+            else -> keyAction!!.getLabel(parent) // 中文狀態顯示標籤
+        }
     }
 
     fun getPreviewText(behavior: KeyBehavior): String = when (behavior) {

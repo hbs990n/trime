@@ -162,6 +162,11 @@ class InputView(
 
     val keyboardView: View
 
+    /** Shows or hides the "recognizing" label on the voice-input key. */
+    fun setVoiceInputIndicator(active: Boolean) {
+        keyboardWindow.setVoiceInputIndicator(active)
+    }
+
     /** Restyles colors after a scheme switch without rebuilding the view tree. */
     fun refreshColors() {
         keyboardBackground.imageDrawable = scope.drawable("keyboard_background")

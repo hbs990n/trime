@@ -69,6 +69,9 @@ open class GestureFrame(context: Context) : FrameLayout(context) {
     var hasLazyDouble = false
     var hasPopup = false
 
+    /** Overrides [longPressTimeout] for this view only, e.g. the 2 s voice-input gesture. */
+    var longPressTimeoutOverride: Long? = null
+
     init {
         // disable system sound effect and haptic feedback
         isSoundEffectsEnabled = false
@@ -220,7 +223,7 @@ open class GestureFrame(context: Context) : FrameLayout(context) {
 
     private fun startLongPressJob(currentTouchId: Int) {
         longPressJob = lifecycleScope.launch {
-            delay(longPressTimeout.toLong())
+            delay(longPressTimeoutOverride ?: longPressTimeout.toLong())
             if (touchId != currentTouchId) return@launch
             if (swipeTriggered || slideActivated) return@launch
             isLongPressed = true
