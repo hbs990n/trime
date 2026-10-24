@@ -1071,8 +1071,15 @@ tool_bar:
       padding: 4
     action: asr_voice
 
+  phrase_button: &phrase_button
+    foreground:
+      style: "常用"
+      font_size: 12
+      padding: 4
+    action: phrase_window
+
   # 右侧按钮列表（从右向左排列）
-  buttons: [ *hide_button, *emoji_button, *clipboard_button, *edit_button, *ascii_mode_button, *asr_voice_button ]
+  buttons: [ *hide_button, *emoji_button, *clipboard_button, *edit_button, *ascii_mode_button, *asr_voice_button, *phrase_button ]
 
 #键盘布局
 preset_keyboards:
@@ -4042,6 +4049,7 @@ preset_keys:
   menu_keyboard: { label: 菜单, send: FUNCTION, command: menu_keyboard }
   clipboard_window: { label: "剪贴", send: FUNCTION, command: "clipboard_window", option: '0' } #0剪贴板，1收藏夹
   asr_voice: { label: 🎤, send: FUNCTION, command: "asr_voice", option: "" } #长按空格开始语音输入，点空格或再次长按结束
+  phrase_window: { label: "常用语", send: FUNCTION, command: "phrase_window", option: '' } #点击打开常用语面板
   # rime状态
   Mode_switch: {toggle: ascii_mode, functional: false, send: SWITCH_CHARSET, states: [ 中文, 西文 ]}
   Zenkaku_Hankaku: {toggle: full_shape, send: SWITCH_CHARSET, states: [ 半角, 全角 ]}

@@ -142,6 +142,10 @@
     <string name="ask_to_delete_all">Delete All?</string>
     <string name="ok">OK</string>
     <string name="cancel">CANCEL</string>
+    <string name="phrase">Phrases</string>
+    <string name="phrase_empty">No phrases yet</string>
+    <string name="phrase_hint">Tap a phrase to input it; long-press to edit or delete</string>
+    <string name="phrase_add">Add phrase</string>
     <string name="licenses_of_third_party_libraries">Licenses of third-party libraries</string>
     <string name="clipboard">Clipboard</string>
     <string name="collection">Collection</string>

@@ -81,6 +81,7 @@ object ToolBarConfig {
         "clipboard_window" to "剪贴板",
         "Keyboard_editor" to "编辑",
         "asr_voice" to "语音",
+        "phrase_window" to "常用语",
         "Zenkaku_Hankaku" to "全角/半角",
     )
 

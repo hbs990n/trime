@@ -140,6 +140,10 @@
     <string name="ask_to_delete_all">删除全部？</string>
     <string name="ok">确定</string>
     <string name="cancel">取消</string>
+    <string name="phrase">常用语</string>
+    <string name="phrase_empty">暂无常用语</string>
+    <string name="phrase_hint">点击词条即可上屏，长按可编辑或删除</string>
+    <string name="phrase_add">添加常用语</string>
     <string name="open_source_licenses">开源软件许可</string>
     <string name="licenses_of_third_party_libraries">第三方软件库许可证</string>
     <string name="clipboard">剪贴板</string>

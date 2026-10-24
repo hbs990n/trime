@@ -23,6 +23,7 @@ import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.data.theme.model.LiquidKeyboard
 import com.osfans.trime.ime.clipboard.ClipboardWindow
+import com.osfans.trime.ime.phrases.PhraseWindow
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.dialog.EnabledSchemaPickerDialog
 import com.osfans.trime.ime.switches.SwitchOptionWindow
@@ -182,6 +183,7 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
                     "switch_hide_key_symbol" -> switchHideKeySymbol()
                     "switch_hide_key_hint" -> switchHideKeyHint()
                     "asr_voice" -> service.toggleVoiceInput()
+                    "phrase_window" -> handlePhraseWindow()
                     else -> handleIntentAction(action.command, arg)
                 }
             }
@@ -210,6 +212,10 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
             private fun handleClipboardWindow(arg: String) {
                 val tabIndex = arg.toIntOrNull()?.coerceIn(0, 1) ?: 0
                 windowManager.attachWindow(ClipboardWindow(di, tabIndex))
+            }
+
+            private fun handlePhraseWindow() {
+                windowManager.attachWindow(PhraseWindow(di))
             }
 
             private fun handleColorScheme(arg: String) {
