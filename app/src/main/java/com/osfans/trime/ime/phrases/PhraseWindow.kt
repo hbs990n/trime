@@ -32,6 +32,7 @@ import splitties.dimensions.dp
 import splitties.views.dsl.constraintlayout.constraintLayout
 import splitties.views.dsl.constraintlayout.endOfParent
 import splitties.views.dsl.constraintlayout.lParams
+import splitties.views.dsl.core.add
 
 /**
  * A small window opened from the candidate bar's "常用语" button. It lists the
@@ -122,8 +123,13 @@ class PhraseWindow(di: DI) : BoardWindow.BarBoardWindow(di) {
 
     override fun onCreateBarView(): View {
         val size = context.dp(theme.style.run { candidateViewHeight + commentHeight })
-        return constraintLayout {
-            add(addButton, lParams(size, size) { endOfParent() })
+        return context.constraintLayout {
+            add(
+                addButton,
+                lParams(size, size) {
+                    endOfParent()
+                },
+            )
         }
     }
 
