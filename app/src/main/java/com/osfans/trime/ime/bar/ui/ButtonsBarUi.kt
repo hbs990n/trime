@@ -23,6 +23,7 @@ class ButtonsBarUi(
     override val ctx: Context,
     private val scope: ThemeScope,
     private val onButtonClick: ((String) -> Unit)? = null,
+    private val buttons: List<ToolBar.Button> = scope.theme.toolBar.buttons,
 ) : Ui {
     private val theme: Theme get() = scope.theme
 
@@ -57,7 +58,6 @@ class ButtonsBarUi(
     }
 
     init {
-        val buttons = theme.toolBar.buttons
         firstButton = buttons.firstOrNull()?.let { toolButton(it) }
 
         buttons.drop(1).forEach { config ->

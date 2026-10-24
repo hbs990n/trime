@@ -255,4 +255,8 @@
     <string name="word_segment">Word segment</string>
     <string name="star_success">Star success</string>
     <string name="ignore_system_gesture_insets">Ignore system gesture insets</string>
+
+    <string name="tool_bar_config">Configure candidate bar</string>
+    <string name="tool_bar_config_hint">Drag the handle to reorder. Long press a row to delete or restore it.</string>
+    <string name="tool_bar_deleted">Deleted</string>
 </resources>

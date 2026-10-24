@@ -251,4 +251,8 @@
     <string name="word_segment">分词</string>
     <string name="star_success">收藏成功</string>
     <string name="ignore_system_gesture_insets">忽略系統手勢插邊</string>
+
+    <string name="tool_bar_config">配置候選欄</string>
+    <string name="tool_bar_config_hint">拖動右側手柄排序，長按條目刪除或恢復。</string>
+    <string name="tool_bar_deleted">已刪</string>
 </resources>

@@ -116,6 +116,7 @@ class AppPrefs(
             const val HIDE_INPUT_BAR = "hide_input_bar"
             const val HIDE_KEY_SYMBOL = "hide_key_symbol"
             const val HIDE_KEY_HINT = "hide_key_hint"
+            const val TOOL_BAR_CONFIG = "tool_bar_config"
 
             const val POPUP_ON_KEY_PRESS = "show_key_popup"
             const val EXPAND_KEYPRESS_AREA = "expand_keypress_area"
@@ -163,6 +164,9 @@ class AppPrefs(
         val hideInputBar = switch(R.string.hide_input_bar, HIDE_INPUT_BAR, false)
         val hideKeySymbol = switch(R.string.hide_key_symbol, HIDE_KEY_SYMBOL, false)
         val hideKeyHint = switch(R.string.hide_key_hint, HIDE_KEY_HINT, false)
+
+        /** JSON encoded order and enabled state of the candidate-bar buttons. */
+        val toolBarConfig = string(TOOL_BAR_CONFIG, "")
 
         val popupOnKeyPress = switch(R.string.popup_on_key_press, POPUP_ON_KEY_PRESS, false)
         val expandKeypressArea = switch(R.string.expand_keypress_area_to_edge, EXPAND_KEYPRESS_AREA, false)

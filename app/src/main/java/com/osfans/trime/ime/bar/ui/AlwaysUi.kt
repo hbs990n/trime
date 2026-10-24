@@ -14,6 +14,7 @@ import com.osfans.trime.R
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.data.theme.model.ToolBar
+import com.osfans.trime.ime.bar.ToolBarConfig
 import splitties.views.dsl.constraintlayout.after
 import splitties.views.dsl.constraintlayout.before
 import splitties.views.dsl.constraintlayout.centerVertically
@@ -63,7 +64,9 @@ class AlwaysUi(
         }
     }
 
-    val buttonsUi = ButtonsBarUi(ctx, scope, onButtonClick)
+    private val toolBarButtons = ToolBarConfig.resolveButtons(theme)
+
+    val buttonsUi = ButtonsBarUi(ctx, scope, onButtonClick, toolBarButtons)
 
     val clipboardUi = ClipboardSuggestionUi(ctx, scope)
 
@@ -87,7 +90,7 @@ class AlwaysUi(
 
     override val root: ConstraintLayout = constraintLayout {
         val (leftWidth, leftHeight) = buttonsUi.getButtonSize(theme.toolBar.primaryButton)
-        val (rightWidth, rightHeight) = buttonsUi.getButtonSize(theme.toolBar.buttons.firstOrNull())
+        val (rightWidth, rightHeight) = buttonsUi.getButtonSize(toolBarButtons.firstOrNull())
 
         add(
             leftMostButton,
@@ -155,7 +158,7 @@ class AlwaysUi(
             if (state == State.Toolbar) {
                 theme.toolBar.primaryButton
             } else {
-                theme.toolBar.buttons.firstOrNull()
+                toolBarButtons.firstOrNull()
             }
 
         val (buttonWidth, buttonHeight) = buttonsUi.getButtonSize(buttonConfig)

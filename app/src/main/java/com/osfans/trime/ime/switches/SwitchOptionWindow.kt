@@ -67,6 +67,11 @@ class SwitchOptionWindow(di: DI) :
                 R.drawable.ic_baseline_keyboard_24,
                 SwitchOptionEntry.Static.Type.Keyboard,
             ),
+            SwitchOptionEntry.Static(
+                context.getString(R.string.tool_bar_config),
+                R.drawable.ic_baseline_tune_24,
+                SwitchOptionEntry.Static.Type.ToolBarConfig,
+            ),
         )
     }
 
@@ -121,6 +126,10 @@ class SwitchOptionWindow(di: DI) :
                         }
 
                         SwitchOptionEntry.Static.Type.Keyboard -> AppUtils.launchMainToKeyboard(context)
+
+                        SwitchOptionEntry.Static.Type.ToolBarConfig -> {
+                            service.showDialog(ToolBarConfigDialog(context, theme).create())
+                        }
 
                         SwitchOptionEntry.Static.Type.ThemeList -> showDialog { r ->
                             ThemePickerDialog.build(service.lifecycleScope, context) {

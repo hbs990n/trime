@@ -251,4 +251,8 @@
     <string name="star_success">收藏成功</string>
     <string name="ignore_system_gesture_insets">忽略系统手势边衬区</string>
     <string name="asr_recognizing">识别中</string>
+
+    <string name="tool_bar_config">配置候选栏</string>
+    <string name="tool_bar_config_hint">拖动右侧手柄排序，长按条目删除或恢复。</string>
+    <string name="tool_bar_deleted">已删</string>
 </resources>
