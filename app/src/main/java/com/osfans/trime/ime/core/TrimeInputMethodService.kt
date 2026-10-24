@@ -1068,6 +1068,29 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
         dialog.show()
         showingDialog = dialog
     }
+
+    /**
+     * Like [showDialog], but attaches to the IME window token WITHOUT
+     * FLAG_ALT_FOCUSABLE_IM, so a text field inside the dialog (e.g. the
+     * common-phrases editor) can gain IME focus and receive soft-keyboard input.
+     */
+    fun showTextDialog(dialog: Dialog) {
+        showingDialog?.dismiss()
+        dialog.window?.also {
+            it.attributes.apply {
+                token = decorView.windowToken
+                type = WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG
+            }
+            // NOTE: intentionally NOT adding FLAG_ALT_FOCUSABLE_IM so the EditText can type.
+            it.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            it.setDimAmount(styledFloat(android.R.attr.backgroundDimAmount))
+        }
+        dialog.setOnDismissListener {
+            showingDialog = null
+        }
+        dialog.show()
+        showingDialog = dialog
+    }
 }
 
 /**

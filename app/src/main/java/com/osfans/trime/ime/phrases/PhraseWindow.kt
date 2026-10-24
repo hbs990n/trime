@@ -247,18 +247,23 @@ class PhraseWindow(di: DI) : BoardWindow.BarBoardWindow(di) {
                     LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height),
                 )
             }
-        AlertDialog.Builder(context)
-            .setTitle(if (existing == null) R.string.phrase_add else R.string.edit)
-            .setView(container)
-            .setPositiveButton(R.string.ok) { _, _ ->
-                val text = editText.text.toString().trim()
-                if (text.isNotEmpty()) {
-                    if (index >= 0) items[index] = text else items.add(text)
-                    PhraseManager.save(context, items)
-                    refresh()
+        val dialog =
+            AlertDialog.Builder(context)
+                .setTitle(if (existing == null) R.string.phrase_add else R.string.edit)
+                .setView(container)
+                .setPositiveButton(R.string.ok) { _, _ ->
+                    val text = editText.text.toString().trim()
+                    if (text.isNotEmpty()) {
+                        if (index >= 0) items[index] = text else items.add(text)
+                        PhraseManager.save(context, items)
+                        refresh()
+                    }
                 }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+                .setNegativeButton(R.string.cancel, null)
+                .create()
+        editText.requestFocus()
+        // Attach to the IME window (no token -> would crash) but keep IME focus so the
+        // soft keyboard can type into the editor.
+        service.showTextDialog(dialog)
     }
 }
