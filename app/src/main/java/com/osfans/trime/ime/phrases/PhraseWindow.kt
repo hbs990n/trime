@@ -5,15 +5,13 @@
 
 package com.osfans.trime.ime.phrases
 
-import android.app.AlertDialog
+import android.content.Intent
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.PopupMenu
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -58,7 +56,7 @@ class PhraseWindow(di: DI) : BoardWindow.BarBoardWindow(di) {
 
     private val addButton by lazy {
         ToolButton(context, R.drawable.ic_baseline_add_24, scope).apply {
-            setOnClickListener { showEditDialog(null, -1) }
+            setOnClickListener { openEditor(null, -1) }
         }
     }
 
@@ -200,7 +198,7 @@ class PhraseWindow(di: DI) : BoardWindow.BarBoardWindow(di) {
         popupMenu?.dismiss()
         val popup = PopupMenu(context, anchor)
         popup.menu.add(0, 0, 0, R.string.edit).setOnMenuItemClickListener {
-            showEditDialog(items[position], position)
+            openEditor(items[position], position)
             true
         }
         popup.menu.add(0, 1, 0, R.string.delete).setOnMenuItemClickListener {
@@ -214,56 +212,17 @@ class PhraseWindow(di: DI) : BoardWindow.BarBoardWindow(di) {
     }
 
     /**
-     * Opens a centered, full-size editor. [index] < 0 means "add a new phrase";
-     * otherwise it edits the phrase at [index]. Saving writes through to
-     * internal storage immediately.
+     * Opens the phrase editor as a small activity. [index] < 0 means "add a new
+     * phrase"; otherwise it edits the phrase at [index]. A real activity owns a
+     * valid window token, so the soft keyboard works normally and never covers it.
      */
-    private fun showEditDialog(existing: String?, index: Int) {
-        val editText =
-            EditText(context).apply {
-                setText(existing ?: "")
-                setSingleLine(false)
-                gravity = Gravity.TOP or Gravity.START
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                setPadding(context.dp(16), context.dp(12), context.dp(16), context.dp(12))
+    private fun openEditor(existing: String?, index: Int) {
+        val intent =
+            Intent(context, PhraseEditActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra(PhraseEditActivity.EXTRA_INDEX, index)
+                putExtra(PhraseEditActivity.EXTRA_TEXT, existing ?: "")
             }
-        val scroll =
-            ScrollView(context).apply {
-                addView(
-                    editText,
-                    ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ),
-                )
-            }
-        val height = (context.resources.displayMetrics.heightPixels * 0.55f).toInt()
-        val container =
-            LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(context.dp(8), context.dp(8), context.dp(8), context.dp(8))
-                addView(
-                    scroll,
-                    LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height),
-                )
-            }
-        val dialog =
-            AlertDialog.Builder(context)
-                .setTitle(if (existing == null) R.string.phrase_add else R.string.edit)
-                .setView(container)
-                .setPositiveButton(R.string.ok) { _, _ ->
-                    val text = editText.text.toString().trim()
-                    if (text.isNotEmpty()) {
-                        if (index >= 0) items[index] = text else items.add(text)
-                        PhraseManager.save(context, items)
-                        refresh()
-                    }
-                }
-                .setNegativeButton(R.string.cancel, null)
-                .create()
-        editText.requestFocus()
-        // Attach to the IME window (no token -> would crash) but keep IME focus so the
-        // soft keyboard can type into the editor.
-        service.showTextDialog(dialog)
+        service.startActivity(intent)
     }
 }
