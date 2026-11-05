@@ -19,17 +19,18 @@ import com.osfans.trime.ui.main.MainActivity
 import timber.log.Timber
 
 /**
- * Connects the recognition controller with the input method service: the current editing context
- * is handed to the recogniser and the transcript is written back into the editor.
+ * Connects the recognition controller with the input method service.
  *
- * The recogniser keeps re-sending the whole transcript and keeps refining the beginning, so the
- * text is kept in the editor as a composing region. That region would otherwise grow without
- * bounds during a long dictation, so finished sentences are committed every so often; only the
- * tail stays editable by the recogniser.
+ * The recogniser keeps re-sending the whole transcript and keeps refining its beginning, so the
+ * uncommitted part is shown as a composing region (the underlined draft) exactly like before.
+ * To stop that draft from growing during a long dictation, a finished sentence is released by
+ * ending the composing region — `finishComposingText()` keeps every character that is already in
+ * the editor, so nothing can be lost or duplicated. The following sentences then start a new
+ * composing region.
  */
 class AsrImeBridge(private val service: TrimeInputMethodService) {
 
-    /** Whether the composing region currently holds the recogniser's draft. */
+    /** Whether a composing region currently holds the recogniser's draft. */
     private var hasComposingText = false
 
     /**
@@ -41,7 +42,7 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
     /** Latest full transcript reported by the recogniser. */
     private var transcript: String = ""
 
-    /** How many characters of [transcript] have already been committed to the editor. */
+    /** How many characters of [transcript] the editor already holds as plain (released) text. */
     private var committedCount: Int = 0
 
     private val controller = AsrController(
@@ -60,10 +61,9 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
                 val ic = targetConnection
                 val full = text.ifEmpty { transcript }
                 if (ic != null) {
-                    val start = committedCount.coerceAtMost(full.length)
-                    val remainder = full.substring(start)
+                    val tail = full.substring(committedCount.coerceAtMost(full.length))
                     runCatching {
-                        if (remainder.isNotEmpty()) ic.commitText(remainder, 1)
+                        if (tail.isNotEmpty()) ic.setComposingText(tail, 1)
                         ic.finishComposingText()
                     }
                 }
@@ -72,7 +72,7 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
 
             override fun onError(message: String) {
                 Timber.w("ASR failed: $message")
-                commitDraft()
+                closeDraft()
                 resetDraft()
                 Toast.makeText(service, message, Toast.LENGTH_SHORT).show()
             }
@@ -93,11 +93,12 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
     }
 
     /**
-     * Ends the running round and keeps whatever has been recognised so far. The draft is
-     * committed right away so hiding the keyboard never throws the recogniser's work away.
+     * Ends the running round and keeps whatever has been recognised so far. The current draft is
+     * released right away (without being rewritten), so hiding the keyboard never throws the
+     * recogniser's work away.
      */
     fun finish() {
-        commitDraft()
+        closeDraft()
         when (controller.currentState) {
             AsrController.State.RECORDING -> controller.stop()
             AsrController.State.CONNECTING -> cancel()
@@ -105,7 +106,7 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
         }
     }
 
-    /** Ends the running round and drops the partial transcript of the current sentence. */
+    /** Ends the running round and drops the partial transcript of the current draft. */
     fun cancel() {
         controller.cancel()
         val ic = targetConnection
@@ -145,54 +146,58 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
     /**
      * Writes the newest transcript into the editor.
      *
-     * Sentences that are already complete are committed so the composing region stays short, and
-     * only the unfinished tail keeps following the recogniser's revisions.
+     * Only the part that is not released yet is kept as composing text, so the recogniser can
+     * still refine it. When the draft reaches a sentence boundary, it is released as plain text
+     * and the next sentence starts a fresh composing region.
      */
     private fun applyTranscript(text: String) {
         val ic = targetConnection ?: return
         if (text.isEmpty()) return
         transcript = text
 
-        val tailStart = committedCount.coerceAtMost(text.length)
-        var boundary = tailStart
-        val tailLength = text.length - tailStart
+        val start = committedCount.coerceAtMost(text.length)
+        val tail = text.substring(start)
 
-        if (tailLength >= RELEASE_MIN_CHARS) {
-            val lastBreak = text.lastIndexOfAny(SENTENCE_BREAKS, startIndex = tailStart)
-            if (lastBreak >= tailStart) boundary = lastBreak + 1
-        }
-        if (boundary == tailStart && tailLength >= RELEASE_HARD_CHARS) {
-            boundary = text.length - KEEP_TAIL_CHARS
-        }
-
-        if (boundary > tailStart) {
-            runCatching { ic.commitText(text.substring(tailStart, boundary), 1) }
-            committedCount = boundary
-            hasComposingText = false
+        if (tail.isEmpty()) {
+            if (hasComposingText) {
+                runCatching { ic.finishComposingText() }
+                hasComposingText = false
+            }
+            return
         }
 
-        val remainder = text.substring(committedCount.coerceAtMost(text.length))
-        if (remainder.isNotEmpty()) {
-            runCatching { ic.setComposingText(remainder, 1) }
-            hasComposingText = true
-        } else if (hasComposingText) {
+        val sentenceFinished = endsWithSentenceBreak(tail)
+        val tooLong = tail.length >= RELEASE_HARD_CHARS
+        if ((sentenceFinished && tail.length >= RELEASE_MIN_CHARS) || tooLong) {
+            // Release everything the editor already holds; the text itself is not rewritten.
             runCatching { ic.finishComposingText() }
             hasComposingText = false
+            committedCount = text.length
+            return
         }
+
+        runCatching { ic.setComposingText(tail, 1) }
+        hasComposingText = true
     }
 
-    /** Commits everything recognised so far, so a later final result only appends the delta. */
-    private fun commitDraft() {
+    /**
+     * Ends the current drafting region so its characters stay as plain text. Later results are
+     * only appended relative to [committedCount], which avoids rewriting (and losing) them.
+     */
+    private fun closeDraft() {
         val ic = targetConnection
         if (ic != null && hasComposingText) {
-            val remainder = transcript.substring(committedCount.coerceAtMost(transcript.length))
-            runCatching {
-                if (remainder.isNotEmpty()) ic.commitText(remainder, 1)
-                ic.finishComposingText()
-            }
+            runCatching { ic.finishComposingText() }
         }
-        committedCount = transcript.length
         hasComposingText = false
+        committedCount = transcript.length
+    }
+
+    /** True when [text] ends with a sentence terminator, ignoring trailing quotes/brackets. */
+    private fun endsWithSentenceBreak(text: String): Boolean {
+        var index = text.length - 1
+        while (index >= 0 && text[index] in TRAILING_CHARS) index--
+        return index >= 0 && text[index] in SENTENCE_BREAKS
     }
 
     private fun buildContext(): AsrConfig.Context {
@@ -223,18 +228,16 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
     private companion object {
         const val CONTEXT_LENGTH = 200
 
-        /** Release finished sentences once the draft grows past this size. */
-        const val RELEASE_MIN_CHARS = 24
+        /** Release a finished sentence only after the draft has at least this many characters. */
+        const val RELEASE_MIN_CHARS = 8
 
-        /** Without any punctuation, force a release at this size to bound the draft. */
-        const val RELEASE_HARD_CHARS = 80
+        /** Without any sentence break, release the draft at this size to bound it. */
+        const val RELEASE_HARD_CHARS = 60
 
-        /** Characters kept as a draft after a forced release, so the tail stays editable. */
-        const val KEEP_TAIL_CHARS = 10
+        /** Sentence terminators that allow a draft to be released. */
+        val SENTENCE_BREAKS = charArrayOf('。', '！', '？', '；', '…', '\n', '.', '!', '?', ';')
 
-        val SENTENCE_BREAKS = charArrayOf(
-            '。', '！', '？', '；', '，', '、', '：', '…', '\n',
-            '.', '!', '?', ';', ',', ':',
-        )
+        /** Characters that may follow a terminator, e.g. closing quotes. */
+        val TRAILING_CHARS = charArrayOf('”', '’', '」', '』', '）', ')', '】', ']', '"', '\'', ' ')
     }
 }

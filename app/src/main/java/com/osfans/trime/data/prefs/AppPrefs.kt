@@ -397,8 +397,8 @@ class AppPrefs(
             const val IN_ING = "fuzzy_pinyin_in_ing"
         }
 
-        val enEng = switch(R.string.fuzzy_pinyin_en_eng, EN_ENG, false)
-        val inIng = switch(R.string.fuzzy_pinyin_in_ing, IN_ING, false)
+        val enEng = switch(R.string.fuzzy_pinyin_en_eng, EN_ENG, true)
+        val inIng = switch(R.string.fuzzy_pinyin_in_ing, IN_ING, true)
     }
 
     @RequiresApi(Build.VERSION_CODES.N)

@@ -7,6 +7,7 @@ package com.osfans.trime.core
 
 import com.osfans.trime.BuildConfig
 import com.osfans.trime.core.data.DataManager
+import com.osfans.trime.core.data.FuzzyPinyinConfig
 import com.osfans.trime.core.data.UserDataManager
 import com.osfans.trime.data.opencc.OpenCCDictManager
 import com.osfans.trime.data.prefs.AppPrefs
@@ -280,6 +281,8 @@ class Rime :
     private fun startRime(fullCheck: Boolean) {
         DataManager.sync()
         UserDataManager.ensureDefaultCustomConfig()
+        // Keep the schema patch in sync with the fuzzy pinyin switches (on by default).
+        val fuzzyPatchChanged = FuzzyPinyinConfig.write()
         val sharedDataDir = DataManager.sharedDataDir.absolutePath
         val userDataDir = UserDataManager.userDataDir.absolutePath
         Timber.d(
@@ -294,7 +297,7 @@ class Rime :
             sharedDataDir,
             userDataDir,
             BuildConfig.BUILD_VERSION_NAME,
-            fullCheck,
+            fullCheck || fuzzyPatchChanged,
         )
     }
 
