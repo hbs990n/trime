@@ -230,6 +230,10 @@
     <string name="max_span_count">每行最大候选词数</string>
     <string name="max_span_count_landscape">每行最大候选词数(横屏)</string>
     <string name="user_dictionary">用户词典</string>
+    <string name="fuzzy_pinyin">模糊音</string>
+    <string name="fuzzy_pinyin_en_eng">en / eng 前后鼻音</string>
+    <string name="fuzzy_pinyin_in_ing">in / ing 前后鼻音</string>
+    <string name="fuzzy_pinyin_summary">仅适用于小鹤双拼方案，切换后会自动重新部署。</string>
     <string name="exported_n_entries">已导出 %1$d 个词条</string>
     <string name="backed_up_x_to_sync_dir">已备份 %1$s 到同步目录</string>
     <string name="import_">导入</string>

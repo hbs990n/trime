@@ -235,6 +235,10 @@
     <string name="max_span_count">Maximum candidates per row</string>
     <string name="max_span_count_landscape">Maximum candidates per row (landscape)</string>
     <string name="user_dictionary">User dictionary</string>
+    <string name="fuzzy_pinyin">Fuzzy pinyin</string>
+    <string name="fuzzy_pinyin_en_eng">en / eng</string>
+    <string name="fuzzy_pinyin_in_ing">in / ing</string>
+    <string name="fuzzy_pinyin_summary">Applies to the 小鹤双拼 schema; the change triggers a redeploy.</string>
     <string name="import_">Import</string>
     <string name="import_error">Import error</string>
     <string name="import_n_entries">Imported %1$d entry(-ies)</string>

@@ -13,6 +13,7 @@ import com.osfans.trime.R
 import com.osfans.trime.ui.main.settings.AdvancedSettingsFragment
 import com.osfans.trime.ui.main.settings.CandidatesSettingsFragment
 import com.osfans.trime.ui.main.settings.ClipboardSettingsFragment
+import com.osfans.trime.ui.main.settings.FuzzyPinyinSettingsFragment
 import com.osfans.trime.ui.main.settings.GeneralSettingsFragment
 import com.osfans.trime.ui.main.settings.KeyboardSettingsFragment
 import com.osfans.trime.ui.main.settings.ProfileSettingsFragment
@@ -33,6 +34,9 @@ sealed class NavigationRoute : Parcelable {
 
     @Serializable
     data object UserDict : NavigationRoute()
+
+    @Serializable
+    data object FuzzyPinyin : NavigationRoute()
 
     @Serializable
     data object Profile : NavigationRoute()
@@ -74,6 +78,9 @@ sealed class NavigationRoute : Parcelable {
             }
             fragment<UserDictionaryFragment, UserDict> {
                 label = ctx.getString(R.string.user_dictionary)
+            }
+            fragment<FuzzyPinyinSettingsFragment, FuzzyPinyin> {
+                label = ctx.getString(R.string.fuzzy_pinyin)
             }
             fragment<ProfileSettingsFragment, Profile> {
                 label = ctx.getString(R.string.profile)

@@ -49,6 +49,7 @@ class AppPrefs(
     val candidates = Candidates(shared).register()
     val clipboard = Clipboard(shared).register()
     val advanced = Advanced(shared).register()
+    val fuzzyPinyin = FuzzyPinyin(shared).register()
 
     @Keep
     private val onSharedPreferenceChangeListener =
@@ -382,6 +383,22 @@ class AppPrefs(
             IGNORE_SYSTEM_GESTURE_INSETS,
             false,
         )
+    }
+
+    /**
+     * Fuzzy pinyin options for the 小鹤双拼 schema. Each switch is applied as an extra
+     * spelling rule in the user's `double_pinyin_flypy.custom.yaml`.
+     */
+    class FuzzyPinyin(
+        shared: SharedPreferences,
+    ) : PreferenceDelegateOwner(shared, R.string.fuzzy_pinyin) {
+        companion object {
+            const val EN_ENG = "fuzzy_pinyin_en_eng"
+            const val IN_ING = "fuzzy_pinyin_in_ing"
+        }
+
+        val enEng = switch(R.string.fuzzy_pinyin_en_eng, EN_ENG, false)
+        val inIng = switch(R.string.fuzzy_pinyin_in_ing, IN_ING, false)
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
