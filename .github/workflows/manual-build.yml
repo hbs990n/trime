@@ -37,6 +37,99 @@ jobs:
         run: |
           sdkmanager --install "cmake;3.31.6"
 
+      - name: Install host build dependencies
+        # Only needed to build the host `rime_deployer` used for precompiling data.
+        # marisa is built from source (see next step) so that its binary format
+        # matches the one bundled into librime_jni.so.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libboost-regex-dev \
+            libgoogle-glog-dev \
+            libleveldb-dev \
+            libyaml-cpp-dev \
+            libopencc-dev
+
+      - name: Build host rime_deployer
+        # RIME_PLUGINS is set to empty so the host build does not pick up the
+        # plugin symlinks that the Gradle JNI build creates in librime/plugins.
+        #
+        # Non-fatal on purpose: if this ever breaks, the build falls back to the
+        # artifacts committed under assets/shared/build instead of producing no
+        # APK at all.
+        continue-on-error: true
+        env:
+          RIME_PLUGINS: ""
+        run: |
+          cmake -S app/src/main/jni/librime/deps/marisa-trie -B /tmp/marisa-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DENABLE_TOOLS=OFF \
+            -DBUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX=/tmp/rime-prefix
+          cmake --build /tmp/marisa-build -j"$(nproc)"
+          cmake --install /tmp/marisa-build
+
+          cmake -S app/src/main/jni/librime -B /tmp/rime-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DBUILD_TEST=OFF \
+            -DCMAKE_PREFIX_PATH=/tmp/rime-prefix \
+            -DMarisa_INCLUDE_PATH=/tmp/rime-prefix/include \
+            -DMarisa_LIBRARY=/tmp/rime-prefix/lib/libmarisa.so
+          cmake --build /tmp/rime-build --target rime_deployer -j"$(nproc)"
+
+      - name: Precompile Rime data
+        # Reproduces what the device does on first launch, but on the CI host:
+        # deploys only the flypy schema (same as the app's default.custom.yaml),
+        # then ships the resulting *.bin into assets/shared/build, i.e. the
+        # prebuilt_data_dir consumed by the APK.
+        #
+        # NOTE: marisa's on-disk layout depends on MARISA_WORD_SIZE, which is
+        # 64 here and on arm64-v8a devices. Artifacts generated here must not be
+        # shipped to 32-bit ABIs (armeabi-v7a / x86); those would fall back to
+        # a full local rebuild (still correct, just slow).
+        #
+        # Non-fatal for the same reason: on failure the previously committed
+        # artifacts stay in place and are packaged into the APK as-is.
+        continue-on-error: true
+        env:
+          LD_LIBRARY_PATH: /tmp/rime-prefix/lib:/tmp/rime-build/lib
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/rime-shared /tmp/rime-user /tmp/rime-staging
+          mkdir -p /tmp/rime-shared /tmp/rime-user /tmp/rime-staging
+
+          # Dereference the symlinks that point into app/data/rime so the
+          # deployer sees a plain directory tree.
+          cp -RL app/src/main/assets/shared/. /tmp/rime-shared/
+          rm -rf /tmp/rime-shared/build
+
+          cat > /tmp/rime-user/default.custom.yaml <<'YAML'
+          patch:
+            schema_list:
+              - schema: double_pinyin_flypy
+          YAML
+
+          /tmp/rime-build/bin/rime_deployer \
+            --build /tmp/rime-user /tmp/rime-shared /tmp/rime-staging
+
+          for f in \
+            luna_pinyin.table.bin luna_pinyin.reverse.bin \
+            double_pinyin_flypy.prism.bin \
+            stroke.table.bin stroke.prism.bin stroke.reverse.bin; do
+            if [ ! -s "/tmp/rime-staging/$f" ]; then
+              echo "missing precompiled artifact: $f"
+              exit 1
+            fi
+          done
+          ls -lh /tmp/rime-staging
+
+          rm -rf app/src/main/assets/shared/build
+          mkdir -p app/src/main/assets/shared/build
+          cp /tmp/rime-staging/*.bin app/src/main/assets/shared/build/
+          ls -lh app/src/main/assets/shared/build
+
       - name: Apply JNI patches
         run: |
           git apply --directory=app/src/main/jni/librime-lua-deps patches/lua.patch
@@ -50,4 +143,11 @@ jobs:
         with:
           name: trime-debug
           path: app/build/outputs/apk/debug/
+          retention-days: 90
+
+      - name: Upload precompiled Rime data
+        uses: actions/upload-artifact@v7
+        with:
+          name: rime-prebuilt
+          path: app/src/main/assets/shared/build/
           retention-days: 90
