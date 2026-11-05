@@ -281,8 +281,9 @@ class Rime :
     private fun startRime(fullCheck: Boolean) {
         DataManager.sync()
         UserDataManager.ensureDefaultCustomConfig()
-        // Keep the schema patch in sync with the fuzzy pinyin switches (on by default).
-        val fuzzyPatchChanged = FuzzyPinyinConfig.write()
+        // Keep the schema patch in sync with the fuzzy pinyin switches (on by default). The
+        // deployer picks up the changed file by its timestamp, so no full rebuild is needed.
+        FuzzyPinyinConfig.write()
         val sharedDataDir = DataManager.sharedDataDir.absolutePath
         val userDataDir = UserDataManager.userDataDir.absolutePath
         Timber.d(
@@ -297,7 +298,7 @@ class Rime :
             sharedDataDir,
             userDataDir,
             BuildConfig.BUILD_VERSION_NAME,
-            fullCheck || fuzzyPatchChanged,
+            fullCheck,
         )
     }
 

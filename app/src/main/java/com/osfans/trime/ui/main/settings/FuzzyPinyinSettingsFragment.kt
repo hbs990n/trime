@@ -66,7 +66,9 @@ class FuzzyPinyinSettingsFragment :
         lifecycleScope.launch {
             withLoadingDialog(requireContext(), R.string.deploy_progress) {
                 if (withContext(Dispatchers.IO) { FuzzyPinyinConfig.write() }) {
-                    viewModel.rime.runOnReady { deploy() }
+                    // A normal restart lets the deployer rebuild the changed schema only,
+                    // instead of recompiling every dictionary with a full check.
+                    viewModel.rime.runOnReady { updateConfig() }
                 }
             }
         }

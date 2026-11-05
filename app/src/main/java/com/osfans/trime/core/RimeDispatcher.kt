@@ -10,13 +10,13 @@ import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -79,46 +79,49 @@ class RimeDispatcher(
 
     private val isRunning = AtomicBoolean(false)
 
+    /** Increases on every start/stop so an older runner exits even if a restart follows quickly. */
+    private val generation = AtomicInteger(0)
+
     /**
      * Start the dispatcher
      * This function returns immediately
      */
     fun start() {
         Timber.d("RimeDispatcher start()")
+        if (!isRunning.compareAndSet(false, true)) return
+        val gen = generation.incrementAndGet()
         internalScope.launch {
             mutex.withLock {
-                if (isRunning.compareAndSet(false, true)) {
-                    Timber.d("nativeStartup()")
-                    controller.nativeStartup()
-                    while (isActive && isRunning.get()) {
-                        val block = queue.take()
-                        block.run()
-                    }
-                    Timber.i("nativeFinalize()")
-                    controller.nativeFinalize()
+                if (gen != generation.get()) return@withLock
+                Timber.d("nativeStartup()")
+                controller.nativeStartup()
+                while (isActive && gen == generation.get() && isRunning.get()) {
+                    val block = queue.take()
+                    block.run()
                 }
+                Timber.i("nativeFinalize()")
+                controller.nativeFinalize()
             }
         }
     }
 
     /**
-     * Stop the dispatcher
-     * This function blocks until fully stopped
+     * Stop the dispatcher.
+     *
+     * This function returns immediately; the native finalize runs on the rime thread after the
+     * current job (which may be a long deployment) finishes. Blocking here used to freeze the
+     * caller's thread — typically the main thread — for minutes and caused ANRs.
      */
     fun stop(): List<Runnable> {
         Timber.i("RimeDispatcher stop()")
-        return if (isRunning.compareAndSet(true, false)) {
-            runBlocking {
-                queue.offer(WrappedRunnable.Empty)
-                mutex.withLock {
-                    val rest = mutableListOf<WrappedRunnable>()
-                    queue.drainTo(rest)
-                    rest
-                }
-            }
-        } else {
-            emptyList()
+        if (!isRunning.getAndSet(false)) {
+            return emptyList()
         }
+        generation.incrementAndGet()
+        val rest = mutableListOf<WrappedRunnable>()
+        queue.drainTo(rest)
+        queue.offer(WrappedRunnable.Empty)
+        return rest
     }
 
     override fun dispatch(
