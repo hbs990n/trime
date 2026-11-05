@@ -400,7 +400,8 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
      * https://github.com/fcitx5-android/fcitx5-android/blob/fe3a618c8fd18842305d2f8ec2880fcc67ec1679/app/src/main/java/org/fcitx/fcitx5/android/input/FcitxInputMethodService.kt#L523-#L547
      */
     override fun onConfigurationChanged(newConfig: Configuration) {
-        cancelVoiceInput()
+        // Keep the recognised text across configuration changes instead of dropping it.
+        stopVoiceInput()
         postRimeJob { clearComposition() }
         val keyboardUiModeMask = ActivityInfo.CONFIG_KEYBOARD or
             ActivityInfo.CONFIG_KEYBOARD_HIDDEN or
@@ -623,13 +624,16 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     }
 
     override fun onFinishInput() {
-        cancelVoiceInput()
+        // Keep whatever has been recognised instead of discarding the round.
+        stopVoiceInput()
         super.onFinishInput()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         Timber.d("onFinishInputView: finishingInput=$finishingInput")
-        cancelVoiceInput()
+        // Hiding the keyboard must not throw away a dictation in progress: commit the draft and
+        // let the recogniser finish appending the rest of the sentence.
+        stopVoiceInput()
         decorLocationUpdated = false
         inputView?.dismissCandidateActionMenu()
         candidatesView?.dismissCandidateActionMenu()
@@ -645,7 +649,7 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     }
 
     override fun onWindowHidden() {
-        cancelVoiceInput()
+        stopVoiceInput()
         super.onWindowHidden()
     }
 
