@@ -135,6 +135,9 @@ class DoubaoAsrClient(
         val primary = results.optJSONObject(0) ?: return
         val text = primary.optString("text", "")
         val isFinal = !primary.optBoolean("is_interim", true)
+        // Punctuation may only be added by a later pass. Log the raw transcript so it is clear
+        // whether the server supplies sentence breaks or AsrImeBridge has to append them.
+        Timber.d("ASR: result(final=%s, len=%d): %s", isFinal, text.length, text)
         listener.onResult(text, isFinal)
     }
 

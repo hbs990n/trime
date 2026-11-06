@@ -21,12 +21,14 @@ import timber.log.Timber
 /**
  * Connects the recognition controller with the input method service.
  *
- * The recogniser keeps re-sending the whole transcript and keeps refining its beginning, so the
- * uncommitted part is shown as a composing region (the underlined draft) exactly like before.
- * To stop that draft from growing during a long dictation, a finished sentence is released by
- * ending the composing region — `finishComposingText()` keeps every character that is already in
- * the editor, so nothing can be lost or duplicated. The following sentences then start a new
- * composing region.
+ * The recogniser keeps re-sending the whole transcript and may later insert punctuation into a
+ * sentence that was already shown. Released text therefore cannot be addressed by a plain
+ * character offset: the anchor is the released text with punctuation and whitespace stripped.
+ * Only the tail after that anchor stays in a composing region and can still be refined.
+ *
+ * Streaming results often carry no punctuation at all (the server adds it in a later pass), so a
+ * terminator is appended whenever a tail is released without one. That is what keeps consecutive
+ * released sentences separated instead of running into each other.
  */
 class AsrImeBridge(private val service: TrimeInputMethodService) {
 
@@ -42,8 +44,14 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
     /** Latest full transcript reported by the recogniser. */
     private var transcript: String = ""
 
-    /** How many characters of [transcript] the editor already holds as plain (released) text. */
-    private var committedCount: Int = 0
+    /** Text already released to the editor this round, including punctuation appended by us. */
+    private var releasedText: String = ""
+
+    /** Whether [releasedText] ends with punctuation, so a repeated one from the server is skipped. */
+    private var releasedEndsWithBreak = false
+
+    /** Exactly what the composing region currently holds, so releasing it never loses it. */
+    private var draftText: String = ""
 
     private val controller = AsrController(
         service.lifecycleScope,
@@ -61,9 +69,9 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
                 val ic = targetConnection
                 val full = text.ifEmpty { transcript }
                 if (ic != null) {
-                    val tail = full.substring(committedCount.coerceAtMost(full.length))
+                    val tail = tailAfterReleased(full)
                     runCatching {
-                        if (tail.isNotEmpty()) ic.setComposingText(tail, 1)
+                        if (tail.isNotEmpty()) ic.setComposingText(ensureSentenceBreak(tail, '。'), 1)
                         ic.finishComposingText()
                     }
                 }
@@ -138,7 +146,9 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
 
     private fun resetDraft() {
         transcript = ""
-        committedCount = 0
+        releasedText = ""
+        releasedEndsWithBreak = false
+        draftText = ""
         hasComposingText = false
         targetConnection = null
     }
@@ -147,57 +157,119 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
      * Writes the newest transcript into the editor.
      *
      * Only the part that is not released yet is kept as composing text, so the recogniser can
-     * still refine it. When the draft reaches a sentence boundary, it is released as plain text
-     * and the next sentence starts a fresh composing region.
+     * still refine it. When a sentence ends (or the draft grows too long) the newest tail is
+     * written first, given a terminator if needed, and then released as plain text.
      */
     private fun applyTranscript(text: String) {
         val ic = targetConnection ?: return
         if (text.isEmpty()) return
         transcript = text
 
-        val start = committedCount.coerceAtMost(text.length)
-        val tail = text.substring(start)
-
+        val tail = tailAfterReleased(text)
         if (tail.isEmpty()) {
             if (hasComposingText) {
-                runCatching { ic.finishComposingText() }
+                // The server shortened the transcript; release whatever the editor still holds.
+                val released = ensureSentenceBreak(draftText, '。')
+                runCatching {
+                    if (released != draftText) ic.setComposingText(released, 1)
+                    ic.finishComposingText()
+                }
+                releasedText += released
+                releasedEndsWithBreak = endsWithSentenceBreak(releasedText)
                 hasComposingText = false
+                draftText = ""
             }
             return
         }
 
+        val plainLength = plainOf(tail).length
         val sentenceFinished = endsWithSentenceBreak(tail)
-        val tooLong = tail.length >= RELEASE_HARD_CHARS
-        if ((sentenceFinished && tail.length >= RELEASE_MIN_CHARS) || tooLong) {
-            // Release everything the editor already holds; the text itself is not rewritten.
-            runCatching { ic.finishComposingText() }
+        val shouldRelease = (sentenceFinished && plainLength >= RELEASE_MIN_CHARS) ||
+            plainLength >= RELEASE_HARD_CHARS
+        if (shouldRelease) {
+            // Always write the newest tail before ending the composing region. Ending it without
+            // this write would release the previous result and drop everything added by this one.
+            val mark = if (sentenceFinished) '。' else '，'
+            val released = ensureSentenceBreak(tail, mark)
+            runCatching {
+                ic.setComposingText(released, 1)
+                ic.finishComposingText()
+            }
             hasComposingText = false
-            committedCount = text.length
+            draftText = ""
+            releasedText += released
+            releasedEndsWithBreak = endsWithSentenceBreak(releasedText)
             return
         }
 
         runCatching { ic.setComposingText(tail, 1) }
+        draftText = tail
         hasComposingText = true
     }
 
     /**
-     * Ends the current drafting region so its characters stay as plain text. Later results are
-     * only appended relative to [committedCount], which avoids rewriting (and losing) them.
+     * Releases the current draft as plain text and keeps [releasedText] in sync with the editor,
+     * so a later final result only appends what is genuinely missing.
      */
     private fun closeDraft() {
         val ic = targetConnection
         if (ic != null && hasComposingText) {
-            runCatching { ic.finishComposingText() }
+            val tail = tailAfterReleased(transcript)
+            val released = if (tail.isEmpty()) "" else ensureSentenceBreak(tail, '。')
+            runCatching {
+                if (released.isNotEmpty()) ic.setComposingText(released, 1)
+                ic.finishComposingText()
+            }
+            releasedText += released
+            releasedEndsWithBreak = endsWithSentenceBreak(releasedText)
         }
         hasComposingText = false
-        committedCount = transcript.length
+        draftText = ""
     }
 
-    /** True when [text] ends with a sentence terminator, ignoring trailing quotes/brackets. */
+    /**
+     * Returns the part of [full] that has not been released yet.
+     *
+     * Counting letters/digits instead of raw characters keeps the anchor stable when the server
+     * inserts punctuation into an already released sentence. Punctuation immediately after the
+     * anchor is skipped because we appended our own terminator there.
+     */
+    private fun tailAfterReleased(full: String): String {
+        val anchorLength = plainOf(releasedText).length
+        if (anchorLength == 0) return full
+        var seen = 0
+        for (index in full.indices) {
+            if (!full[index].isLetterOrDigit()) continue
+            seen++
+            if (seen == anchorLength) {
+                var start = index + 1
+                if (releasedEndsWithBreak) {
+                    while (start < full.length && !full[start].isLetterOrDigit()) start++
+                }
+                return full.substring(start)
+            }
+        }
+        return ""
+    }
+
+    /** The recogniser's text without punctuation or whitespace, used only for alignment. */
+    private fun plainOf(text: String): String = text.filter { it.isLetterOrDigit() }
+
+    /** True when [text] ends with a terminator, ignoring trailing quotes/brackets. */
     private fun endsWithSentenceBreak(text: String): Boolean {
         var index = text.length - 1
         while (index >= 0 && text[index] in TRAILING_CHARS) index--
         return index >= 0 && text[index] in SENTENCE_BREAKS
+    }
+
+    /** Appends [mark] when [text] does not already end with punctuation. */
+    private fun ensureSentenceBreak(text: String, mark: Char): String {
+        val trimmed = text.trimEnd()
+        if (trimmed.isEmpty()) return text
+        var index = trimmed.length - 1
+        while (index >= 0 && trimmed[index] in TRAILING_CHARS) index--
+        if (index < 0) return text
+        return if (trimmed[index] in SENTENCE_BREAKS) trimmed else "$trimmed$mark"
     }
 
     private fun buildContext(): AsrConfig.Context {
@@ -234,8 +306,11 @@ class AsrImeBridge(private val service: TrimeInputMethodService) {
         /** Without any sentence break, release the draft at this size to bound it. */
         const val RELEASE_HARD_CHARS = 60
 
-        /** Sentence terminators that allow a draft to be released. */
-        val SENTENCE_BREAKS = charArrayOf('。', '！', '？', '；', '…', '\n', '.', '!', '?', ';')
+        /** Terminators and short pauses that allow a draft to be released. */
+        val SENTENCE_BREAKS = charArrayOf(
+            '。', '！', '？', '；', '…', '，', '、', '：', '\n',
+            '.', '!', '?', ';', ',', ':',
+        )
 
         /** Characters that may follow a terminator, e.g. closing quotes. */
         val TRAILING_CHARS = charArrayOf('”', '’', '」', '』', '）', ')', '】', ']', '"', '\'', ' ')
