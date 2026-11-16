@@ -6,6 +6,7 @@
 package com.osfans.trime.ime.asr
 
 import java.io.ByteArrayOutputStream
+import java.io.OutputStream
 
 /**
  * Minimal writer/reader for the "inner protobuf" framing used by the Doubao IME ASR channel.
@@ -46,10 +47,33 @@ internal object AsrProto {
 
     private fun stringBytes(field: Int, value: ByteArray): ByteArray {
         val out = ByteArrayOutputStream(value.size + 16)
-        out.write(tag(field, WIRE_TYPE_LENGTH_DELIMITED))
-        out.write(varint(value.size.toLong()))
-        out.write(value)
+        writeBytes(out, field, value)
         return out.toByteArray()
+    }
+
+    /** Writes a length delimited field straight into an existing stream, allocating no arrays. */
+    fun writeBytes(out: OutputStream, field: Int, value: ByteArray) {
+        writeVarint(out, ((field.toLong() shl 3) or WIRE_TYPE_LENGTH_DELIMITED.toLong()))
+        writeVarint(out, value.size.toLong())
+        out.write(value)
+    }
+
+    /** Writes a string field straight into an existing stream. */
+    fun writeString(out: OutputStream, field: Int, value: String) =
+        writeBytes(out, field, value.toByteArray(Charsets.UTF_8))
+
+    private fun writeVarint(out: OutputStream, value: Long) {
+        var v = value
+        while (true) {
+            val b = (v and 0x7FL).toInt()
+            v = v ushr 7
+            if (v != 0L) {
+                out.write(b or 0x80)
+            } else {
+                out.write(b)
+                break
+            }
+        }
     }
 
     /** A parsed downlink message. */

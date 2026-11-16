@@ -8,6 +8,7 @@ package com.osfans.trime.ime.asr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -17,6 +18,9 @@ import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
 import timber.log.Timber
+import java.util.concurrent.SynchronousQueue
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 /**
@@ -145,8 +149,28 @@ class DoubaoAsrClient(
 
     /** One client for the whole process; every round only opens a new socket. */
     private object SharedHttpClient {
+        /**
+         * OkHttp's default dispatcher uses a cached pool whose threads stay idle for 60s before
+         * being reclaimed. On a speech round that leaves 3-4 threads hanging long after the
+         * microphone is released. Use a short keep-alive (2s) and a small upper bound — a round
+         * only ever has one socket — so threads are released as soon as the session ends.
+         */
+        private val dispatcher = Dispatcher(
+            ThreadPoolExecutor(
+                0,
+                4,
+                2,
+                TimeUnit.SECONDS,
+                SynchronousQueue(),
+                ThreadFactory { runnable ->
+                    Thread(runnable, "asr-okhttp").apply { isDaemon = true }
+                },
+            ),
+        )
+
         val instance: OkHttpClient by lazy {
             OkHttpClient.Builder()
+                .dispatcher(dispatcher)
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.MILLISECONDS)
                 .writeTimeout(10, TimeUnit.SECONDS)

@@ -183,7 +183,9 @@ class AsrController(
                     filled += take
                     offset += take
                     if (filled == AsrConfig.FRAME_BYTES) {
-                        asrClient.sendAudio(frame.copyOf())
+                        // sendAudio copies into a ByteString before the async send, so the
+                        // reusable frame buffer is safe to overwrite on the next iteration.
+                        asrClient.sendAudio(frame)
                         filled = 0
                     }
                 }
