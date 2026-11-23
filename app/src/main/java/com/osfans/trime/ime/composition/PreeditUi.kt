@@ -18,7 +18,7 @@ import androidx.core.text.buildSpannedString
 import com.osfans.trime.core.CompositionProto
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
-import com.osfans.trime.util.rippleDrawable
+import com.osfans.trime.util.roundedRippleDrawable
 import splitties.dimensions.dp
 import splitties.views.dsl.core.Ui
 import splitties.views.dsl.core.add
@@ -73,6 +73,22 @@ open class PreeditUi(
     var bubbleMode = false
         private set
 
+    /**
+     * 给冒泡上色：背景/文字都跟随键盘按键配色（夜间模式即黑底白字），
+     * 选中项用高亮按键色区分。背景为实色，不再透明。
+     */
+    private fun styleBubble(cell: TextView, selected: Boolean) {
+        val backColor = if (selected) scope.colors.hilitedKeyBackColor else scope.colors.keyBackColor
+        val textColor = if (selected) scope.colors.hilitedKeyTextColor else scope.colors.keyTextColor
+        cell.setTextColor(textColor)
+        cell.background =
+            roundedRippleDrawable(
+                scope.colors.hilitedKeyBackColor,
+                ctx.dp(6).toFloat(),
+                backColor,
+            )
+    }
+
     /** 在编码区显示拼音冒泡（如 WO / QP），取代普通编码文本。 */
     fun showBubbles(
         labels: List<String>,
@@ -87,13 +103,7 @@ open class PreeditUi(
                 TextView(ctx).apply {
                     text = label
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-                    setTextColor(
-                        if (index == 0) scope.colors.hilitedCandidateTextColor else scope.colors.candidateTextColor,
-                    )
-                    background =
-                        rippleDrawable(
-                            if (index == 0) scope.colors.hilitedCandidateBackColor else scope.colors.backColor,
-                        )
+                    this@PreeditUi.styleBubble(this, index == 0)
                     setPadding(ctx.dp(10), ctx.dp(4), ctx.dp(10), ctx.dp(4))
                     setOnClickListener { bubblePick?.invoke(index) }
                 }
@@ -112,13 +122,7 @@ open class PreeditUi(
     fun selectBubble(index: Int) {
         for (i in 0 until bubbleRow.childCount) {
             val cell = bubbleRow.getChildAt(i) as? TextView ?: continue
-            cell.setTextColor(
-                if (i == index) scope.colors.hilitedCandidateTextColor else scope.colors.candidateTextColor,
-            )
-            cell.background =
-                rippleDrawable(
-                    if (i == index) scope.colors.hilitedCandidateBackColor else scope.colors.backColor,
-                )
+            styleBubble(cell, i == index)
         }
     }
 
