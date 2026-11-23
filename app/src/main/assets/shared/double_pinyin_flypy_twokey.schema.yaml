@@ -106,6 +106,8 @@ translator:
   spelling_hints: 1
   always_show_comments: true
   preedit_format:
+    - xform/^qo$/wo/
+    - xform/^qo /wo /
     - xform/([bpmfdtnljqx])n/$1iao/
     - xform/(\w)g/$1eng/
     - xform/(\w)q/$1iu/

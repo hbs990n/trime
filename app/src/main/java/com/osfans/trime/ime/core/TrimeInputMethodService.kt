@@ -154,13 +154,11 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     private val onThemeChangeListener =
         ThemeManager.OnThemeChangeListener {
             themeScope?.let { replaceInputViews(it) }
-            // 「双键」主题切到专用的小鹤双拼·双键方案（多义键由引擎原生展开），
-            // 其它主题切回普通小鹤双拼，避免多义规则污染标准键盘。
+            // 默认且唯一方案就是小鹤双拼·双键（多义键由引擎原生展开），
+            // 切主题不再改方案，避免跳回普通小鹤。
             val themeId = ThemeManager.prefs.selectedTheme.getValue()
-            val isTwoKey = themeId.contains("shuangjian", ignoreCase = true)
-            val targetSchema =
-                if (isTwoKey) UserDataManager.TWOKEY_SCHEMA_ID else UserDataManager.DEFAULT_SCHEMA_ID
-            TwoKeyDiag.log("theme", "onThemeChange themeId=$themeId isTwoKey=$isTwoKey target=$targetSchema")
+            val targetSchema = UserDataManager.TWOKEY_SCHEMA_ID
+            TwoKeyDiag.log("theme", "onThemeChange themeId=$themeId target=$targetSchema")
             postRimeJob { selectSchema(targetSchema) }
         }
 
@@ -239,12 +237,10 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
                 ThemeManager.init(resources.configuration)
                 ThemeManager.addOnChangedListener(onThemeChangeListener)
                 ColorManager.addOnChangedListener(onColorChangeListener)
-                // 冷启动时按当前主题选好方案（此时 ThemeManager.init 不会触发 change 监听）
+                // 冷启动固定选双键方案（此时 ThemeManager.init 不会触发 change 监听）
                 val themeId = ThemeManager.prefs.selectedTheme.getValue()
-                val isTwoKey = themeId.contains("shuangjian", ignoreCase = true)
-                val target =
-                    if (isTwoKey) UserDataManager.TWOKEY_SCHEMA_ID else UserDataManager.DEFAULT_SCHEMA_ID
-                TwoKeyDiag.log("theme", "coldStart themeId=$themeId isTwoKey=$isTwoKey target=$target")
+                val target = UserDataManager.TWOKEY_SCHEMA_ID
+                TwoKeyDiag.log("theme", "coldStart themeId=$themeId target=$target")
                 selectSchema(target)
             }
         }
