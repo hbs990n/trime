@@ -53,7 +53,7 @@ open class PreeditUi(
      */
     private val bubbleRow =
         LinearLayout(ctx).apply {
-            orientation = HORIZONTAL
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             visibility = View.GONE
         }
