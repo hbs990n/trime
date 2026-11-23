@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: 2015 - 2025 Rime community
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Fast incremental build for iterating on Kotlin/resources only.
+#
+# Unlike manual-build.yml this job deliberately SKIPS:
+#   - the host rime_deployer build (multi-minute CMake of librime)
+#   - the "Precompile Rime data" step (marisa/leveldb heavy)
+#   - the Android CMake build of librime_jni.so
+# It reuses the precompiled Rime data already committed under
+# app/src/main/assets/shared/build/ and the librime_jni.so committed under
+# app/prebuilt/arm64-v8a/ (NativeBaseConventionPlugin detects this dir and
+# wires it as a jniLibs source instead of compiling CMake).
+#
+# Consequence: only Kotlin + resources change, so a run finishes in a couple
+# of minutes. NATIVE CHANGES (anything under app/src/main/jni/) WILL NOT BE
+# PICKED UP here -- use Manual Build for those.
+
+name: Fast Build (incremental)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    env:
+      BUILD_ABI: arm64-v8a
+      CI_NAME: Fast Build
+      BUILD_GIT_REPO: https://github.com/hbs990n/trime
+    steps:
+      - name: Fetch source code
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: 25
+          cache: "gradle"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools"
+
+      - name: Install Android NDK
+        # Required by AGP even when prebuilt JNI is used (ABI splits).
+        run: sdkmanager --install "cmake;3.31.6"
+
+      - name: Verify fast-build prerequisites
+        run: |
+          set -euo pipefail
+          test -f app/prebuilt/arm64-v8a/librime_jni.so || {
+            echo "missing prebuilt librime_jni.so"; exit 1; }
+          for f in luna_pinyin.table.bin double_pinyin_flypy.prism.bin stroke.prism.bin; do
+            test -s "app/src/main/assets/shared/build/$f" || {
+              echo "missing precompiled data: $f"; exit 1; }
+          done
+          echo "prebuilt JNI + Rime data present; skipping native build"
+
+      - name: Build debug Trime (Kotlin + resources only)
+        run: ./gradlew :app:assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: trime-debug
+          path: app/build/outputs/apk/debug/
+          retention-days: 90

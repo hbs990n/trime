@@ -80,6 +80,12 @@ gen-external-apklibs
 *.so.*
 *.dylib
 
+# Prebuilt JNI for the fast (incremental) workflow: reuse the native library
+# so CI skips the multi-minute CMake/librime build and only recompiles Kotlin.
+!app/prebuilt/
+!app/prebuilt/**
+!app/prebuilt/arm64-v8a/librime_jni.so
+
 # Executables
 *.exe
 *.out

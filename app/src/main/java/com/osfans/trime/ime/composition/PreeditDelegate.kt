@@ -18,6 +18,7 @@ import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
 import com.osfans.trime.ime.core.TouchEventReceiverWindow
+import com.osfans.trime.util.TwoKeyDiag
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
@@ -83,7 +84,16 @@ class PreeditDelegate(override val di: DI) :
      * 拼音来自 candidate.comment（全拼），只在双键方案下启用，标准键盘不受影响。
      */
     override fun onCandidateListUpdate(data: Candidates.Bulk) {
-        val isTwoKey = rime.run { statusCached }.schemaId == UserDataManager.TWOKEY_SCHEMA_ID
+        val schemaId = rime.run { statusCached }.schemaId
+        val isTwoKey = schemaId == UserDataManager.TWOKEY_SCHEMA_ID
+        val comments = data.candidates.take(8).joinToString(" | ") {
+            "${it.text}<${it.comment}>"
+        }
+        TwoKeyDiag.log(
+            "delegate",
+            "onCandidateListUpdate schema=$schemaId isTwoKey=$isTwoKey n=${data.candidates.size} " +
+                "sample=[$comments]",
+        )
         if (!isTwoKey || data.candidates.isEmpty()) {
             if (ui.pinyinMode) {
                 ui.hidePinyinGroups()
@@ -108,9 +118,11 @@ class PreeditDelegate(override val di: DI) :
             return
         }
         pinyinCandidateIndices = groups.values.toIntArray()
+        TwoKeyDiag.log("delegate", "GROUPS -> ${groups.keys.toList()} indices=${pinyinCandidateIndices.toList()}")
         ui.showPinyinGroups(groups.keys.toList()) { idx ->
             val candidateIndex = pinyinCandidateIndices.getOrNull(idx) ?: return@showPinyinGroups
             ui.selectPinyin(idx)
+            TwoKeyDiag.log("delegate", "PICK idx=$idx candidateIndex=$candidateIndex")
             // 点某组即上屏该拼音对应的首个候选字
             rime.launchOnReady { it.selectCandidate(candidateIndex, true) }
         }
@@ -119,6 +131,10 @@ class PreeditDelegate(override val di: DI) :
     }
 
     override fun onCompositionUpdate(data: CompositionProto) {
+        TwoKeyDiag.log(
+            "delegate",
+            "onCompositionUpdate preedit='${data.preedit}' len=${data.length} pinyinMode=${ui.pinyinMode}",
+        )
         // 拼音组模式下，编码清空（选字上屏/退格）后收起拼音组
         if (ui.pinyinMode && data.length == 0) {
             ui.hidePinyinGroups()

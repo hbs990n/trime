@@ -18,6 +18,7 @@ import androidx.core.text.buildSpannedString
 import com.osfans.trime.core.CompositionProto
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
+import com.osfans.trime.util.TwoKeyDiag
 import com.osfans.trime.util.roundedRippleDrawable
 import splitties.dimensions.dp
 import splitties.views.dsl.core.Ui
@@ -100,6 +101,7 @@ open class PreeditUi(
         }
         pinyinMode = true
         pinyinPick = onPick
+        TwoKeyDiag.log("ui", "showPinyinGroups groups=$groups")
         preedit.visibility = View.GONE
         pinyinRow.removeAllViews()
         groups.forEachIndexed { index, label ->

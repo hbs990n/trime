@@ -52,6 +52,7 @@ import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.asr.AsrImeBridge
 import com.osfans.trime.ime.composition.CandidatesView
 import com.osfans.trime.receiver.RimeIntentReceiver
+import com.osfans.trime.util.TwoKeyDiag
 import com.osfans.trime.util.any
 import com.osfans.trime.util.findSectionFrom
 import com.osfans.trime.util.forceShowSelf
@@ -159,6 +160,7 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
             val isTwoKey = themeId.contains("shuangjian", ignoreCase = true)
             val targetSchema =
                 if (isTwoKey) UserDataManager.TWOKEY_SCHEMA_ID else UserDataManager.DEFAULT_SCHEMA_ID
+            TwoKeyDiag.log("theme", "onThemeChange themeId=$themeId isTwoKey=$isTwoKey target=$targetSchema")
             postRimeJob { selectSchema(targetSchema) }
         }
 
@@ -240,9 +242,10 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
                 // 冷启动时按当前主题选好方案（此时 ThemeManager.init 不会触发 change 监听）
                 val themeId = ThemeManager.prefs.selectedTheme.getValue()
                 val isTwoKey = themeId.contains("shuangjian", ignoreCase = true)
-                selectSchema(
-                    if (isTwoKey) UserDataManager.TWOKEY_SCHEMA_ID else UserDataManager.DEFAULT_SCHEMA_ID,
-                )
+                val target =
+                    if (isTwoKey) UserDataManager.TWOKEY_SCHEMA_ID else UserDataManager.DEFAULT_SCHEMA_ID
+                TwoKeyDiag.log("theme", "coldStart themeId=$themeId isTwoKey=$isTwoKey target=$target")
+                selectSchema(target)
             }
         }
         registerReceiver()
