@@ -20,6 +20,8 @@ import java.util.Locale
 object TwoKeyDiag {
     private const val TAG = "TwoKeyDiag"
     private const val FILE_NAME = "twokey_diag.log"
+    // Hot-patch verification marker: change this string to prove a swapped dex is live.
+    private const val BUILD_MARKER = "HOTPATCH_AOSP_V1"
     private val fmt = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.getDefault())
     private val lock = Any()
 
@@ -28,7 +30,7 @@ object TwoKeyDiag {
 
     /** Mark a fresh session. Called once from Rime startup. */
     fun session(tag: String) {
-        val line = "===== SESSION $tag @ ${fmt.format(Date())} ====="
+        val line = "===== SESSION $tag [$BUILD_MARKER] @ ${fmt.format(Date())} ====="
         Timber.d("$TAG $line")
         synchronized(lock) {
             runCatching { file.appendText(line + "\n") }
