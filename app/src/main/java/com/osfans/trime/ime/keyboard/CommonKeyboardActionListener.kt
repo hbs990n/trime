@@ -57,6 +57,23 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
 
     private val prefs = AppPrefs.defaultInstance()
 
+    /** 双键布局多义键消歧引擎 */
+    private val multiKeyEngine by lazy {
+        MultiKeyEngine(rime).apply {
+            callback = MultiKeyEngine.Callback { choices, _ ->
+                service.lifecycleScope.launch {
+                    if (choices.size == 1) {
+                        // 只有一个合法拼音，无需选择，直接送入编码区
+                        commitChoice(choices[0].pinyin)
+                    } else if (choices.isNotEmpty()) {
+                        windowManager.attachWindow(MultiKeyChoiceWindow(di, choices, this@apply))
+                    }
+                    // 没有合法拼音时保持静默，待定状态已由引擎自行清空
+                }
+            }
+        }
+    }
+
     private fun showDialog(dialog: suspend (RimeApi) -> Dialog) {
         rime.launchOnReady { api ->
             service.lifecycleScope.launch {
@@ -108,6 +125,8 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
             }
 
             override fun onAction(action: KeyAction) {
+                // 任何普通按键（含功能键、退格）都会中断未完成的双键消歧序列
+                multiKeyEngine.cancel()
                 val text = action.getText(KeyboardWindow.currentKeyboard)
                 val shouldHandle = when {
                     action.commit.isNotEmpty() -> {
@@ -417,6 +436,13 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
 
                     i += value.length
                 }
+            }
+
+            override fun onMultiKeyClick(letters: String): Boolean {
+                // 仅在双拼方案下启用；全拼或英文态直接回退到普通按键流程
+                if (!multiKeyEngine.isShuangpinMode()) return false
+                multiKeyEngine.accept(letters)
+                return true
             }
         }
     }

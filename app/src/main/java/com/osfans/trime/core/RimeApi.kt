@@ -89,4 +89,11 @@ interface RimeApi {
     ): Array<CandidateProto>
 
     suspend fun setCandidatePagingMode(enabled: Boolean)
+
+    /**
+     * 静默探测：把 [sequence] 临时送入引擎，返回它产生的候选编码串，随后恢复现场。
+     * 全程不触发 emitResponse，因此不会上屏、不刷新候选栏、不影响用户词频。
+     * 用于双键布局的多义键消歧：判断某个字母组合是否是合法拼音。
+     */
+    suspend fun probeCandidates(sequence: String): Array<CandidateProto>
 }
