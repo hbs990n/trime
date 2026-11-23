@@ -23,7 +23,6 @@ import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.data.theme.model.LiquidKeyboard
 import com.osfans.trime.ime.clipboard.ClipboardWindow
-import com.osfans.trime.ime.composition.PreeditDelegate
 import com.osfans.trime.ime.phrases.PhraseWindow
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.dialog.EnabledSchemaPickerDialog
@@ -55,7 +54,6 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
     private val windowManager: BoardWindowManager by instance()
     private val keyboardWindow: KeyboardWindow by instance()
     private val liquidWindow: LiquidWindow by instance()
-    private val preeditDelegate: PreeditDelegate by instance()
 
     private val prefs = AppPrefs.defaultInstance()
 

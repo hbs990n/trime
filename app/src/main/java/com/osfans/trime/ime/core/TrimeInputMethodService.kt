@@ -37,7 +37,6 @@ import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import com.osfans.trime.core.KeyModifiers
 import com.osfans.trime.core.KeyValue
-import com.osfans.trime.core.data.UserDataManager
 import com.osfans.trime.core.RimeApi
 import com.osfans.trime.core.RimeKeyMapping
 import com.osfans.trime.core.RimeMessage
@@ -52,7 +51,6 @@ import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.asr.AsrImeBridge
 import com.osfans.trime.ime.composition.CandidatesView
 import com.osfans.trime.receiver.RimeIntentReceiver
-import com.osfans.trime.util.TwoKeyDiag
 import com.osfans.trime.util.any
 import com.osfans.trime.util.findSectionFrom
 import com.osfans.trime.util.forceShowSelf
@@ -154,12 +152,6 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     private val onThemeChangeListener =
         ThemeManager.OnThemeChangeListener {
             themeScope?.let { replaceInputViews(it) }
-            // 默认且唯一方案就是小鹤双拼·双键（多义键由引擎原生展开），
-            // 切主题不再改方案，避免跳回普通小鹤。
-            val themeId = ThemeManager.prefs.selectedTheme.getValue()
-            val targetSchema = UserDataManager.TWOKEY_SCHEMA_ID
-            TwoKeyDiag.log("theme", "onThemeChange themeId=$themeId target=$targetSchema")
-            postRimeJob { selectSchema(targetSchema) }
         }
 
     @Keep
@@ -237,11 +229,6 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
                 ThemeManager.init(resources.configuration)
                 ThemeManager.addOnChangedListener(onThemeChangeListener)
                 ColorManager.addOnChangedListener(onColorChangeListener)
-                // 冷启动固定选双键方案（此时 ThemeManager.init 不会触发 change 监听）
-                val themeId = ThemeManager.prefs.selectedTheme.getValue()
-                val target = UserDataManager.TWOKEY_SCHEMA_ID
-                TwoKeyDiag.log("theme", "coldStart themeId=$themeId target=$target")
-                selectSchema(target)
             }
         }
         registerReceiver()

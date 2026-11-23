@@ -8,8 +8,6 @@ package com.osfans.trime.ime.composition
 import android.content.Context
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
-import android.util.TypedValue
-import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
@@ -18,9 +16,6 @@ import androidx.core.text.buildSpannedString
 import com.osfans.trime.core.CompositionProto
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
-import com.osfans.trime.util.TwoKeyDiag
-import com.osfans.trime.util.roundedRippleDrawable
-import splitties.dimensions.dp
 import splitties.views.dsl.core.Ui
 import splitties.views.dsl.core.add
 import splitties.views.dsl.core.lParams
@@ -48,107 +43,15 @@ open class PreeditUi(
             onMoveCursor = this@PreeditUi.onMoveCursor
         }
 
-    /**
-     * 双键布局下的拼音组行：与 [preedit] 同处编码区，显示候选对应的全部拼音组合。
-     * 单字取 candidate.comment（全拼），词组由「字->拼音」映射还原，
-     * 如 wo le / qie le，多个并排、可点选；编码回显仍在 [preedit] 中保留。
-     */
-    private val pinyinRow =
-        LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            visibility = View.GONE
-        }
-
     override val root =
         object : LinearLayout(ctx) {
             override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean = false
 
             init {
-                orientation = VERTICAL
-                add(pinyinRow, lParams())
+                orientation = HORIZONTAL
                 add(preedit, lParams())
             }
         }
-
-    private var pinyinPick: ((Int) -> Unit)? = null
-    var pinyinMode = false
-        private set
-
-    /** 拼音组样式跟随键盘按键配色（夜间即黑底白字），选中项用高亮按键色。 */
-    private fun styleCell(
-        cell: TextView,
-        selected: Boolean,
-    ) {
-        val back = if (selected) scope.colors.hilitedKeyBackColor else scope.colors.keyBackColor
-        val fg = if (selected) scope.colors.hilitedKeyTextColor else scope.colors.keyTextColor
-        cell.setTextColor(fg)
-        cell.background =
-            roundedRippleDrawable(
-                back,
-                ctx.dp(6).toFloat(),
-                back,
-            )
-    }
-
-    /** 在编码区显示多组拼音（如 WO / QIE），并排可点。 */
-    fun showPinyinGroups(
-        groups: List<String>,
-        selectedIndex: Int,
-        onPick: (Int) -> Unit,
-    ) {
-        if (groups.isEmpty()) {
-            hidePinyinGroups()
-            return
-        }
-        pinyinMode = true
-        pinyinPick = onPick
-        TwoKeyDiag.log("ui", "showPinyinGroups groups=$groups selected=$selectedIndex")
-        pinyinRow.removeAllViews()
-        groups.forEachIndexed { index, label ->
-            val cell =
-                TextView(ctx).apply {
-                    text = label.uppercase()
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, theme.preedit.foreground.fontSize)
-                    typeface = theme.fonts.text
-                    this@PreeditUi.styleCell(this, index == selectedIndex)
-                    setPadding(ctx.dp(9), ctx.dp(3), ctx.dp(9), ctx.dp(3))
-                    // 候选浮窗通过透明 PopupWindow 转发裸 MotionEvent，
-                    // TextView 的 click 手势不会被触发，直接处理 UP。
-                    setOnTouchListener { _, event ->
-                        if (event.actionMasked == MotionEvent.ACTION_UP) {
-                            TwoKeyDiag.log("ui", "TOUCH pinyin index=$index label=$label")
-                            pinyinPick?.invoke(index)
-                        }
-                        true
-                    }
-                }
-            pinyinRow.addView(
-                cell,
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { setMargins(ctx.dp(2), 0, ctx.dp(2), 0) },
-            )
-        }
-        pinyinRow.visibility = View.VISIBLE
-    }
-
-    /** 更新拼音组的高亮项 */
-    fun selectPinyin(index: Int) {
-        for (i in 0 until pinyinRow.childCount) {
-            val cell = pinyinRow.getChildAt(i) as? TextView ?: continue
-            styleCell(cell, i == index)
-        }
-    }
-
-    fun hidePinyinGroups() {
-        if (!pinyinMode) return
-        pinyinMode = false
-        pinyinPick = null
-        pinyinRow.visibility = View.GONE
-        pinyinRow.removeAllViews()
-    }
 
     private fun CompositionProto.toSpannedString() = buildSpannedString {
         if (!preedit.isNullOrEmpty()) {
@@ -177,14 +80,11 @@ open class PreeditUi(
         val string = composition.toSpannedString()
         val cursorPos = composition.cursorPos
         val hasPreedit = composition.length > 0
-        visible = hasPreedit || pinyinMode
-        if (!hasPreedit) {
-            // 编码被清空（选字上屏或退格）后，拼音组使命完成，恢复正常编码显示
-            if (pinyinMode) hidePinyinGroups()
+        visible = hasPreedit
+        if (!visible) {
             updateTextView("", false)
             return
         }
-        // 拼音组模式下仍回显引擎格式化后的编码（如 wo le bu），与泡泡共存。
         val stringWithCursor =
             if (cursorPos == 0 || cursorPos == string.length) {
                 string

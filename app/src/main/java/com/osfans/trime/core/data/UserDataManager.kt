@@ -44,12 +44,8 @@ object UserDataManager {
     private const val SCHEMA_LIST_CUSTOM_PATCH = """
       patch:
         schema_list:
-          - schema: double_pinyin_flypy_twokey
+          - schema: double_pinyin_flypy
     """
-
-    /** 供「双键」主题部署时切换到的方案 id。 */
-    const val TWOKEY_SCHEMA_ID = "double_pinyin_flypy_twokey"
-    const val DEFAULT_SCHEMA_ID = "double_pinyin_flypy"
 
     private val lock = Mutex()
 
@@ -137,18 +133,6 @@ object UserDataManager {
         val custom = File(userDataDir, DEFAULT_CUSTOM_FILE_NAME)
         if (!custom.exists() && custom.createNewFile()) {
             custom.writeText(SCHEMA_LIST_CUSTOM_PATCH.trimIndent())
-            return
-        }
-        // 老用户的 default.custom.yaml 里若还留着普通小鹤双拼，替换为双键版，
-        // 使默认只保留一个方案（双键），避免两套方案来回切换。
-        if (custom.exists()) {
-            val content = custom.readText()
-            // 只整行替换普通小鹤双拼；双键那行已带 _twokey 后缀，不能二次追加。
-            val patched = content.replace(
-                Regex("(?m)^(\\s*)- schema: $DEFAULT_SCHEMA_ID\\s*$"),
-                "$1- schema: $TWOKEY_SCHEMA_ID",
-            )
-            if (patched != content) custom.writeText(patched)
         }
     }
 

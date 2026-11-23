@@ -46,18 +46,6 @@ android {
         resValues = true
     }
 
-    signingConfigs {
-        // Fixed debug keystore committed to the repo so every CI run signs
-        // identically. Without this AGP generates a fresh debug key per runner,
-        // breaking in-place updates with INSTALL_FAILED_UPDATE_INCOMPATIBLE.
-        getByName("debug") {
-            storeFile = file("debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -80,7 +68,6 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
-            signingConfig = signingConfigs.getByName("debug")
 
             resValue("string", "trime_app_name", "@string/app_name_debug")
         }

@@ -9,18 +9,13 @@ import android.graphics.drawable.GradientDrawable
 import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewOutlineProvider
-import com.osfans.trime.core.Candidates
 import com.osfans.trime.core.CompositionProto
-import com.osfans.trime.core.data.UserDataManager
 import com.osfans.trime.daemon.RimeSession
 import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
-import com.osfans.trime.ime.broadcast.InputBroadcaster
 import com.osfans.trime.ime.core.TouchEventReceiverWindow
-import com.osfans.trime.util.TwoKeyDiag
-import com.osfans.trime.util.TwoKeyFilterState
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
@@ -34,7 +29,6 @@ class PreeditDelegate(override val di: DI) :
     private val context: ContextThemeWrapper by instance()
     private val scope: ThemeScope by instance()
     private val rime: RimeSession by instance()
-    private val broadcaster: InputBroadcaster by instance()
 
     private val theme: Theme
         get() = scope.theme
@@ -79,56 +73,10 @@ class PreeditDelegate(override val di: DI) :
 
     private val touchEventReceiverWindow = TouchEventReceiverWindow(ui.root)
 
-    /**
-     * 双键布局下，编码区显示候选对应的全部拼音组合（如 WO LE / QIE LE），并排可点。
-     * 单字候选用 comment（全拼），词组候选由「字->拼音」映射还原；
-     * 组合按 Rime 候选顺序（词频权重）排列，用户点哪组就只显示哪组的候选。
-     * 多音节（连续输入/整句）阶段同样显示，不再切回原生模式，也不阻塞续输。
-     */
-    override fun onCandidateListUpdate(data: Candidates.Bulk) {
-        val schemaId = rime.run { statusCached }.schemaId
-        val isTwoKey = schemaId == UserDataManager.TWOKEY_SCHEMA_ID
-        val comments = data.candidates.take(8).joinToString(" | ") {
-            "${it.text}<${it.comment}>"
-        }
-        TwoKeyDiag.log(
-            "delegate",
-            "onCandidateListUpdate schema=$schemaId isTwoKey=$isTwoKey n=${data.candidates.size} " +
-                "sample=[$comments]",
-        )
-        val (groups, selectedIndex) = TwoKeyFilterState.onCandidates(isTwoKey, data)
-        if (!isTwoKey || groups.isEmpty()) {
-            if (ui.pinyinMode) {
-                ui.hidePinyinGroups()
-                ui.root.visibility = View.INVISIBLE
-            }
-            return
-        }
-        TwoKeyDiag.log("delegate", "GROUPS -> $groups selected=$selectedIndex")
-        ui.showPinyinGroups(groups, selectedIndex) { idx ->
-            val group = groups.getOrNull(idx) ?: return@showPinyinGroups
-            // 只锁定筛选目标；候选栏由下面的重新广播按新目标过滤。
-            TwoKeyFilterState.pick(group)
-            ui.selectPinyin(idx)
-            TwoKeyFilterState.lastBulk?.let { broadcaster.onCandidateListUpdate(it) }
-        }
-        ui.root.visibility = View.VISIBLE
-        touchEventReceiverWindow.show()
-    }
-
     override fun onCompositionUpdate(data: CompositionProto) {
-        TwoKeyDiag.log(
-            "delegate",
-            "onCompositionUpdate preedit='${data.preedit}' len=${data.length} pinyinMode=${ui.pinyinMode}",
-        )
-        // 编码清空（选字上屏/退格到空）后解除拼音组筛选。
-        if (ui.pinyinMode && data.length == 0) {
-            ui.hidePinyinGroups()
-            TwoKeyFilterState.reset()
-        }
         ui.update(data)
         ui.root.visibility = if (ui.visible) View.VISIBLE else View.INVISIBLE
-        if (ui.visible) {
+        if (data.length > 0) {
             touchEventReceiverWindow.show()
         } else {
             touchEventReceiverWindow.dismiss()

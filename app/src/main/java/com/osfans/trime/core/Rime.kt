@@ -12,7 +12,6 @@ import com.osfans.trime.core.data.UserDataManager
 import com.osfans.trime.data.opencc.OpenCCDictManager
 import com.osfans.trime.data.prefs.AppPrefs
 import com.osfans.trime.ime.core.InlinePreeditMode
-import com.osfans.trime.util.TwoKeyDiag
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -235,15 +234,7 @@ class Rime :
 
     override suspend fun selectedSchemaId(): String = withRimeContext { getCurrentRimeSchema() }
 
-    override suspend fun selectSchema(schemaId: String) = withRimeContext {
-        val ok = selectRimeSchema(schemaId)
-        val current = runCatching { getCurrentRimeSchema() }.getOrDefault("<error>")
-        TwoKeyDiag.log(
-            "schema",
-            "selectRimeSchema(requested=$schemaId) ok=$ok current=$current",
-        )
-        ok
-    }
+    override suspend fun selectSchema(schemaId: String) = withRimeContext { selectRimeSchema(schemaId) }
 
     override suspend fun currentSchema(): RimeSchema = withRimeContext {
         RimeSchema(getCurrentRimeSchema())
@@ -293,17 +284,8 @@ class Rime :
         // Keep the schema patch in sync with the fuzzy pinyin switches (on by default). The
         // deployer picks up the changed file by its timestamp, so no full rebuild is needed.
         FuzzyPinyinConfig.write()
-        TwoKeyDiag.session("startRime fullCheck=$fullCheck ${System.currentTimeMillis()}")
         val sharedDataDir = DataManager.sharedDataDir.absolutePath
         val userDataDir = UserDataManager.userDataDir.absolutePath
-        runCatching {
-            val custom = java.io.File(userDataDir, "default.custom.yaml")
-            TwoKeyDiag.dumpConfig(
-                "custom",
-                "path=${custom.absolutePath} exists=${custom.exists()}\n" +
-                    if (custom.exists()) custom.readText() else "<missing>",
-            )
-        }
         Timber.d(
             """
             Starting rime with:
@@ -323,10 +305,6 @@ class Rime :
     private fun processKeyInner(value: Int, modifiers: Int, isVirtual: Boolean): Boolean {
         lastAsciiTipsText = asciiTipsText(getRimeStatus())
         val handled = processRimeKey(value, modifiers)
-        TwoKeyDiag.log(
-            "key",
-            "code=$value char='${value.toChar()}' mods=$modifiers virtual=$isVirtual handled=$handled",
-        )
         emitResponse()
         if (!handled) {
             handleRimeMessage(
@@ -348,23 +326,6 @@ class Rime :
 
     private fun emitResponse(commit: CommitProto? = null) {
         val response = getRimeResponse(pagingMode)
-        runCatching {
-            val comp = response.composition
-            val cands = response.candidates
-            val n = when (cands) {
-                is Candidates.Bulk -> cands.candidates.size
-                is Candidates.Paged -> cands.candidates.size
-            }
-            val sample = when (cands) {
-                is Candidates.Bulk -> cands.candidates.take(8)
-                is Candidates.Paged -> cands.candidates.take(8)
-            }.joinToString(" | ") { "${it.text}<${it.comment}>" }
-            TwoKeyDiag.log(
-                "response",
-                "schema=${response.status.schemaId} preedit='${comp.preedit}' len=${comp.length} " +
-                    "cands=$n sample=[$sample]",
-            )
-        }
         handleRimeMessage(4, arrayOf(commit ?: response.commit))
         handlePreedit(response.composition)
         if (response.composition.length <= 0 && lastAsciiTipsText != asciiTipsText(response.status)) {
