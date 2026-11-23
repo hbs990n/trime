@@ -80,12 +80,19 @@ class PreeditDelegate(override val di: DI) :
     private val touchEventReceiverWindow = TouchEventReceiverWindow(ui.root)
 
     /**
+     * 引擎已在 preedit 里插入空格表示进入第二音节。此时必须退出拼音组模式，
+     * 否则泡泡会吞掉编码回显、筛选会把整句候选筛成单字，看起来像无法续输。
+     */
+    private var composingMultiSyllable = false
+
+    /**
      * 双键布局下，编码区显示引擎候选自带的拼音组（如 WO / QIE），并排可点。
      * 拼音来自 candidate.comment（全拼）；点选只切换候选栏筛选，不直接上屏。
+     * 仅单音节阶段启用；多音节（连续输入/整句）阶段交还给引擎原生候选。
      */
     override fun onCandidateListUpdate(data: Candidates.Bulk) {
         val schemaId = rime.run { statusCached }.schemaId
-        val isTwoKey = schemaId == UserDataManager.TWOKEY_SCHEMA_ID
+        val isTwoKey = schemaId == UserDataManager.TWOKEY_SCHEMA_ID && !composingMultiSyllable
         val comments = data.candidates.take(8).joinToString(" | ") {
             "${it.text}<${it.comment}>"
         }
@@ -119,8 +126,9 @@ class PreeditDelegate(override val di: DI) :
             "delegate",
             "onCompositionUpdate preedit='${data.preedit}' len=${data.length} pinyinMode=${ui.pinyinMode}",
         )
-        // 拼音组模式下，编码清空（选字上屏/退格）后收起拼音组
-        if (ui.pinyinMode && data.length == 0) {
+        // preedit 中出现空格 = 引擎已分词，进入第二音节，转为整句输入
+        composingMultiSyllable = data.preedit?.contains(' ') == true
+        if (ui.pinyinMode && (data.length == 0 || composingMultiSyllable)) {
             ui.hidePinyinGroups()
             TwoKeyFilterState.reset()
         }
