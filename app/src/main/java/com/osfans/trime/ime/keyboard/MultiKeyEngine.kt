@@ -109,11 +109,11 @@ class MultiKeyEngine(
         return result
     }
 
-    /** 选定某个拼音后，把它正常送入引擎编码区，进入常规选字流程 */
-    fun commitChoice(pinyin: String) {
-        rime.launchOnReady { api ->
-            api.clearComposition()
-            api.simulateKeySequence(pinyin)
-        }
+    /**
+     * 应用某个拼音：默认首项直接送入，点其它冒泡时无副作用地替换编码。
+     * 只刷新一次候选栏，编码区不会闪现空态。
+     */
+    fun applyChoice(pinyin: String) {
+        rime.launchOnReady { api -> api.replaceInput(pinyin) }
     }
 }

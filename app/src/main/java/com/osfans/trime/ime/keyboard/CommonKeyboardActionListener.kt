@@ -23,6 +23,7 @@ import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeManager
 import com.osfans.trime.data.theme.model.LiquidKeyboard
 import com.osfans.trime.ime.clipboard.ClipboardWindow
+import com.osfans.trime.ime.composition.PreeditDelegate
 import com.osfans.trime.ime.phrases.PhraseWindow
 import com.osfans.trime.ime.core.TrimeInputMethodService
 import com.osfans.trime.ime.dialog.EnabledSchemaPickerDialog
@@ -54,6 +55,7 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
     private val windowManager: BoardWindowManager by instance()
     private val keyboardWindow: KeyboardWindow by instance()
     private val liquidWindow: LiquidWindow by instance()
+    private val preeditDelegate: PreeditDelegate by instance()
 
     private val prefs = AppPrefs.defaultInstance()
 
@@ -62,13 +64,24 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
         MultiKeyEngine(rime).apply {
             callback = MultiKeyEngine.Callback { choices, _ ->
                 service.lifecycleScope.launch {
-                    if (choices.size == 1) {
-                        // 只有一个合法拼音，无需选择，直接送入编码区
-                        commitChoice(choices[0].pinyin)
-                    } else if (choices.isNotEmpty()) {
-                        windowManager.attachWindow(MultiKeyChoiceWindow(di, choices, this@apply))
+                    if (choices.isEmpty()) return@launch
+                    // 默认取第一项：立即送入引擎，让下方候选栏出现对应字
+                    applyChoice(choices[0].pinyin)
+                    if (choices.size > 1) {
+                        // 多个合法拼音：在编码区（原显示 QO 处）显示可点冒泡，
+                        // 键盘本身保持不变；点某个冒泡即替换编码并更新下方候选。
+                        preeditDelegate.ui.showBubbles(
+                            labels = choices.map { it.pinyin.uppercase() },
+                            onPick = { index ->
+                                service.lifecycleScope.launch {
+                                    applyChoice(choices[index].pinyin)
+                                    preeditDelegate.ui.selectBubble(index)
+                                }
+                            },
+                        )
+                    } else {
+                        preeditDelegate.ui.hideBubbles()
                     }
-                    // 没有合法拼音时保持静默，待定状态已由引擎自行清空
                 }
             }
         }
@@ -125,8 +138,10 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
             }
 
             override fun onAction(action: KeyAction) {
-                // 任何普通按键（含功能键、退格）都会中断未完成的双键消歧序列
+                // 任何普通按键（含功能键、退格）都会中断未完成的双键消歧序列。
+                // 若拼音冒泡正显示，一并收起，交由普通按键流程接管。
                 multiKeyEngine.cancel()
+                preeditDelegate.ui.hideBubbles()
                 val text = action.getText(KeyboardWindow.currentKeyboard)
                 val shouldHandle = when {
                     action.commit.isNotEmpty() -> {

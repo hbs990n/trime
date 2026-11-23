@@ -96,4 +96,10 @@ interface RimeApi {
      * 用于双键布局的多义键消歧：判断某个字母组合是否是合法拼音。
      */
     suspend fun probeCandidates(sequence: String): Array<CandidateProto>
+
+    /**
+     * 用 [sequence] 替换当前编码并刷新候选栏。全程只 emitResponse 一次，
+     * 避免中间的空编码态触发 UI 抖动（多义键切换拼音时使用）。
+     */
+    suspend fun replaceInput(sequence: String)
 }

@@ -302,6 +302,15 @@ class Rime :
         result
     }
 
+    override suspend fun replaceInput(sequence: String) = withRimeContext {
+        clearRimeComposition()
+        for (ch in sequence) {
+            processRimeKey(ch.lowercaseChar().code, 0)
+        }
+        // 只刷新一次：编码区直接进入目标拼音，候选栏对应更新，无中间空态
+        emitResponse()
+    }
+
     override suspend fun setCandidatePagingMode(enabled: Boolean) = withRimeContext {
         pagingMode = enabled
         emitResponse()
