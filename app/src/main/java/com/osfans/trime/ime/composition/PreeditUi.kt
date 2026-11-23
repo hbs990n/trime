@@ -84,7 +84,7 @@ open class PreeditUi(
         cell.setTextColor(fg)
         cell.background =
             roundedRippleDrawable(
-                scope.colors.hilitedKeyBackColor,
+                back,
                 ctx.dp(6).toFloat(),
                 back,
             )
@@ -93,6 +93,7 @@ open class PreeditUi(
     /** 在编码区显示多组拼音（如 WO / QIE），并排可点。 */
     fun showPinyinGroups(
         groups: List<String>,
+        selectedIndex: Int,
         onPick: (Int) -> Unit,
     ) {
         if (groups.isEmpty()) {
@@ -101,7 +102,7 @@ open class PreeditUi(
         }
         pinyinMode = true
         pinyinPick = onPick
-        TwoKeyDiag.log("ui", "showPinyinGroups groups=$groups")
+        TwoKeyDiag.log("ui", "showPinyinGroups groups=$groups selected=$selectedIndex")
         preedit.visibility = View.GONE
         pinyinRow.removeAllViews()
         groups.forEachIndexed { index, label ->
@@ -110,9 +111,17 @@ open class PreeditUi(
                     text = label.uppercase()
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, theme.preedit.foreground.fontSize)
                     typeface = theme.fonts.text
-                    this@PreeditUi.styleCell(this, index == 0)
+                    this@PreeditUi.styleCell(this, index == selectedIndex)
                     setPadding(ctx.dp(9), ctx.dp(3), ctx.dp(9), ctx.dp(3))
-                    setOnClickListener { pinyinPick?.invoke(index) }
+                    // 候选浮窗通过透明 PopupWindow 转发裸 MotionEvent，
+                    // TextView 的 click 手势不会被触发，直接处理 UP。
+                    setOnTouchListener { _, event ->
+                        if (event.actionMasked == MotionEvent.ACTION_UP) {
+                            TwoKeyDiag.log("ui", "TOUCH pinyin index=$index label=$label")
+                            pinyinPick?.invoke(index)
+                        }
+                        true
+                    }
                 }
             pinyinRow.addView(
                 cell,

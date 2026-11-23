@@ -29,6 +29,7 @@ import com.osfans.trime.ime.candidates.popup.PagedCandidatesUi
 import com.osfans.trime.ime.core.BaseInputView
 import com.osfans.trime.ime.core.TouchEventReceiverWindow
 import com.osfans.trime.ime.core.TrimeInputMethodService
+import com.osfans.trime.util.TwoKeyFilterState
 import splitties.dimensions.dp
 import splitties.views.dsl.constraintlayout.below
 import splitties.views.dsl.constraintlayout.bottomOfParent
@@ -98,8 +99,13 @@ class CandidatesView(
         PagedCandidatesUi(
             ctx,
             scope,
-            onCandidateClick = { index -> rime.launchOnReady { it.selectCandidate(index, global = false) } },
-            onCandidateAction = { index, text, view -> showCandidateActionMenu(index, text, view, global = false) },
+            onCandidateClick = { index ->
+                val raw = TwoKeyFilterState.rawPagedIndex(index)
+                rime.launchOnReady { it.selectCandidate(raw, global = false) }
+            },
+            onCandidateAction = { index, text, view ->
+                showCandidateActionMenu(TwoKeyFilterState.rawPagedIndex(index), text, view, global = false)
+            },
             onPrevPage = { rime.launchOnReady { it.changeCandidatePage(true) } },
             onNextPage = { rime.launchOnReady { it.changeCandidatePage(false) } },
         )
@@ -116,7 +122,7 @@ class CandidatesView(
             }
 
             is RimeMessage.PagedCandidatesMessage -> {
-                candidates = it.data
+                candidates = TwoKeyFilterState.filterPaged(it.data) ?: it.data
                 updateUi()
             }
 

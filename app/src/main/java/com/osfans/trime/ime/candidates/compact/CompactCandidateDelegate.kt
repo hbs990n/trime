@@ -24,6 +24,7 @@ import com.osfans.trime.ime.bar.UnrollButtonStateMachine
 import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
 import com.osfans.trime.ime.candidates.unrolled.decoration.FlexboxVerticalDecoration
 import com.osfans.trime.ime.core.InputView
+import com.osfans.trime.util.TwoKeyFilterState
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -96,10 +97,13 @@ class CompactCandidateDelegate(override val di: DI) :
     val adapter by lazy {
         CompactCandidateViewAdapter(scope).apply {
             setOnItemClickListener { _, _, position ->
-                rime.launchOnReady { it.selectCandidate(position, global = true) }
+                // 双键筛选模式下，显示位置不是引擎原始索引
+                val raw = TwoKeyFilterState.rawIndex(position)
+                rime.launchOnReady { it.selectCandidate(raw, global = true) }
             }
             setOnItemLongClickListener { _, view, position ->
-                inputView.showCandidateActionMenu(position, items[position].text, view, global = true)
+                val raw = TwoKeyFilterState.rawIndex(position)
+                inputView.showCandidateActionMenu(raw, items[position].text, view, global = true)
                 true
             }
         }
@@ -174,7 +178,9 @@ class CompactCandidateDelegate(override val di: DI) :
     }
 
     override fun onCandidateListUpdate(data: Candidates.Bulk) {
-        val (total, highlighted, candidates) = data
+        // 双键模式：候选栏只显示当前锁定拼音组对应的候选字
+        val shown = TwoKeyFilterState.filter(data) ?: data
+        val (total, highlighted, candidates) = shown
 
         val maxSpanCount = maxSpanCountPref.getValue()
 

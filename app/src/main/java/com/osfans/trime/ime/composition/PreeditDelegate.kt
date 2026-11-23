@@ -17,8 +17,10 @@ import com.osfans.trime.daemon.launchOnReady
 import com.osfans.trime.data.theme.Theme
 import com.osfans.trime.data.theme.ThemeScope
 import com.osfans.trime.ime.broadcast.InputBroadcastReceiver
+import com.osfans.trime.ime.broadcast.InputBroadcaster
 import com.osfans.trime.ime.core.TouchEventReceiverWindow
 import com.osfans.trime.util.TwoKeyDiag
+import com.osfans.trime.util.TwoKeyFilterState
 import org.kodein.di.DI
 import org.kodein.di.DIAware
 import org.kodein.di.instance
@@ -32,6 +34,7 @@ class PreeditDelegate(override val di: DI) :
     private val context: ContextThemeWrapper by instance()
     private val scope: ThemeScope by instance()
     private val rime: RimeSession by instance()
+    private val broadcaster: InputBroadcaster by instance()
 
     private val theme: Theme
         get() = scope.theme
@@ -76,12 +79,9 @@ class PreeditDelegate(override val di: DI) :
 
     private val touchEventReceiverWindow = TouchEventReceiverWindow(ui.root)
 
-    /** 当前拼音组里，每组首个候选在候选栏中的全局索引。 */
-    private var pinyinCandidateIndices = intArrayOf()
-
     /**
      * 双键布局下，编码区显示引擎候选自带的拼音组（如 WO / QIE），并排可点。
-     * 拼音来自 candidate.comment（全拼），只在双键方案下启用，标准键盘不受影响。
+     * 拼音来自 candidate.comment（全拼）；点选只切换候选栏筛选，不直接上屏。
      */
     override fun onCandidateListUpdate(data: Candidates.Bulk) {
         val schemaId = rime.run { statusCached }.schemaId
@@ -94,37 +94,21 @@ class PreeditDelegate(override val di: DI) :
             "onCandidateListUpdate schema=$schemaId isTwoKey=$isTwoKey n=${data.candidates.size} " +
                 "sample=[$comments]",
         )
-        if (!isTwoKey || data.candidates.isEmpty()) {
+        val (groups, selectedIndex) = TwoKeyFilterState.onCandidates(isTwoKey, data)
+        if (!isTwoKey || groups.isEmpty()) {
             if (ui.pinyinMode) {
                 ui.hidePinyinGroups()
                 ui.root.visibility = View.INVISIBLE
             }
             return
         }
-        // 按拼音（comment）去重，保序；最多 5 组，避免编码区太长。
-        val groups = LinkedHashMap<String, Int>()
-        data.candidates.forEachIndexed { index, cand ->
-            val py = cand.comment.trim()
-            if (py.isNotEmpty() && !groups.containsKey(py)) {
-                groups[py] = index
-            }
-            if (groups.size >= 5) return@forEachIndexed
-        }
-        if (groups.isEmpty()) {
-            if (ui.pinyinMode) {
-                ui.hidePinyinGroups()
-                ui.root.visibility = View.INVISIBLE
-            }
-            return
-        }
-        pinyinCandidateIndices = groups.values.toIntArray()
-        TwoKeyDiag.log("delegate", "GROUPS -> ${groups.keys.toList()} indices=${pinyinCandidateIndices.toList()}")
-        ui.showPinyinGroups(groups.keys.toList()) { idx ->
-            val candidateIndex = pinyinCandidateIndices.getOrNull(idx) ?: return@showPinyinGroups
+        TwoKeyDiag.log("delegate", "GROUPS -> $groups selected=$selectedIndex")
+        ui.showPinyinGroups(groups, selectedIndex) { idx ->
+            val group = groups.getOrNull(idx) ?: return@showPinyinGroups
+            // 只锁定筛选目标；候选栏由下面的重新广播按新目标过滤。
+            TwoKeyFilterState.pick(group)
             ui.selectPinyin(idx)
-            TwoKeyDiag.log("delegate", "PICK idx=$idx candidateIndex=$candidateIndex")
-            // 点某组即上屏该拼音对应的首个候选字
-            rime.launchOnReady { it.selectCandidate(candidateIndex, true) }
+            TwoKeyFilterState.lastBulk?.let { broadcaster.onCandidateListUpdate(it) }
         }
         ui.root.visibility = View.VISIBLE
         touchEventReceiverWindow.show()
@@ -138,6 +122,7 @@ class PreeditDelegate(override val di: DI) :
         // 拼音组模式下，编码清空（选字上屏/退格）后收起拼音组
         if (ui.pinyinMode && data.length == 0) {
             ui.hidePinyinGroups()
+            TwoKeyFilterState.reset()
         }
         ui.update(data)
         ui.root.visibility = if (ui.visible) View.VISIBLE else View.INVISIBLE
