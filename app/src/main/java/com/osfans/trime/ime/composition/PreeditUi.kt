@@ -49,8 +49,9 @@ open class PreeditUi(
         }
 
     /**
-     * 双键布局下的拼音组行：与 [preedit] 同处编码区，取代原始编码显示。
-     * 数据来自引擎候选自带的拼音注释（全拼），如 wo / qie，多个并排、可点选。
+     * 双键布局下的拼音组行：与 [preedit] 同处编码区，显示候选对应的全部拼音组合。
+     * 单字取 candidate.comment（全拼），词组由「字->拼音」映射还原，
+     * 如 wo le / qie le，多个并排、可点选；编码回显仍在 [preedit] 中保留。
      */
     private val pinyinRow =
         LinearLayout(ctx).apply {
@@ -64,9 +65,9 @@ open class PreeditUi(
             override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean = false
 
             init {
-                orientation = HORIZONTAL
-                add(preedit, lParams())
+                orientation = VERTICAL
                 add(pinyinRow, lParams())
+                add(preedit, lParams())
             }
         }
 
@@ -103,7 +104,6 @@ open class PreeditUi(
         pinyinMode = true
         pinyinPick = onPick
         TwoKeyDiag.log("ui", "showPinyinGroups groups=$groups selected=$selectedIndex")
-        preedit.visibility = View.GONE
         pinyinRow.removeAllViews()
         groups.forEachIndexed { index, label ->
             val cell =
@@ -148,7 +148,6 @@ open class PreeditUi(
         pinyinPick = null
         pinyinRow.visibility = View.GONE
         pinyinRow.removeAllViews()
-        preedit.visibility = View.VISIBLE
     }
 
     private fun CompositionProto.toSpannedString() = buildSpannedString {
@@ -185,8 +184,7 @@ open class PreeditUi(
             updateTextView("", false)
             return
         }
-        // 拼音组模式：编码区只显示拼音组，不再回显代表码（如 qo 这种非法拼音）
-        if (pinyinMode) return
+        // 拼音组模式下仍回显引擎格式化后的编码（如 wo le bu），与泡泡共存。
         val stringWithCursor =
             if (cursorPos == 0 || cursorPos == string.length) {
                 string
