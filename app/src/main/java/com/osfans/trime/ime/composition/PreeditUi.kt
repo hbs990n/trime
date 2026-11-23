@@ -6,9 +6,9 @@
 package com.osfans.trime.ime.composition
 
 import android.content.Context
-import android.util.TypedValue
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -48,10 +48,10 @@ open class PreeditUi(
         }
 
     /**
-     * 多义键消歧的拼音冒泡行：与 [preedit] 并列放在编码区，默认隐藏。
-     * 用户点某个拼音后，下方候选区显示该拼音对应的字。
+     * 双键布局下的拼音组行：与 [preedit] 同处编码区，取代原始编码显示。
+     * 数据来自引擎候选自带的拼音注释（全拼），如 wo / qie，多个并排、可点选。
      */
-    private val bubbleRow =
+    private val pinyinRow =
         LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -65,49 +65,54 @@ open class PreeditUi(
             init {
                 orientation = HORIZONTAL
                 add(preedit, lParams())
-                add(bubbleRow, lParams())
+                add(pinyinRow, lParams())
             }
         }
 
-    private var bubblePick: ((Int) -> Unit)? = null
-    var bubbleMode = false
+    private var pinyinPick: ((Int) -> Unit)? = null
+    var pinyinMode = false
         private set
 
-    /**
-     * 给冒泡上色：背景/文字都跟随键盘按键配色（夜间模式即黑底白字），
-     * 选中项用高亮按键色区分。背景为实色，不再透明。
-     */
-    private fun styleBubble(cell: TextView, selected: Boolean) {
-        val backColor = if (selected) scope.colors.hilitedKeyBackColor else scope.colors.keyBackColor
-        val textColor = if (selected) scope.colors.hilitedKeyTextColor else scope.colors.keyTextColor
-        cell.setTextColor(textColor)
+    /** 拼音组样式跟随键盘按键配色（夜间即黑底白字），选中项用高亮按键色。 */
+    private fun styleCell(
+        cell: TextView,
+        selected: Boolean,
+    ) {
+        val back = if (selected) scope.colors.hilitedKeyBackColor else scope.colors.keyBackColor
+        val fg = if (selected) scope.colors.hilitedKeyTextColor else scope.colors.keyTextColor
+        cell.setTextColor(fg)
         cell.background =
             roundedRippleDrawable(
                 scope.colors.hilitedKeyBackColor,
                 ctx.dp(6).toFloat(),
-                backColor,
+                back,
             )
     }
 
-    /** 在编码区显示拼音冒泡（如 WO / QP），取代普通编码文本。 */
-    fun showBubbles(
-        labels: List<String>,
+    /** 在编码区显示多组拼音（如 WO / QIE），并排可点。 */
+    fun showPinyinGroups(
+        groups: List<String>,
         onPick: (Int) -> Unit,
     ) {
-        bubbleMode = true
-        bubblePick = onPick
+        if (groups.isEmpty()) {
+            hidePinyinGroups()
+            return
+        }
+        pinyinMode = true
+        pinyinPick = onPick
         preedit.visibility = View.GONE
-        bubbleRow.removeAllViews()
-        labels.forEachIndexed { index, label ->
+        pinyinRow.removeAllViews()
+        groups.forEachIndexed { index, label ->
             val cell =
                 TextView(ctx).apply {
-                    text = label
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-                    this@PreeditUi.styleBubble(this, index == 0)
-                    setPadding(ctx.dp(10), ctx.dp(4), ctx.dp(10), ctx.dp(4))
-                    setOnClickListener { bubblePick?.invoke(index) }
+                    text = label.uppercase()
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, theme.preedit.foreground.fontSize)
+                    typeface = theme.fonts.text
+                    this@PreeditUi.styleCell(this, index == 0)
+                    setPadding(ctx.dp(9), ctx.dp(3), ctx.dp(9), ctx.dp(3))
+                    setOnClickListener { pinyinPick?.invoke(index) }
                 }
-            bubbleRow.addView(
+            pinyinRow.addView(
                 cell,
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -115,23 +120,23 @@ open class PreeditUi(
                 ).apply { setMargins(ctx.dp(2), 0, ctx.dp(2), 0) },
             )
         }
-        bubbleRow.visibility = View.VISIBLE
+        pinyinRow.visibility = View.VISIBLE
     }
 
-    /** 更新冒泡的高亮选中项 */
-    fun selectBubble(index: Int) {
-        for (i in 0 until bubbleRow.childCount) {
-            val cell = bubbleRow.getChildAt(i) as? TextView ?: continue
-            styleBubble(cell, i == index)
+    /** 更新拼音组的高亮项 */
+    fun selectPinyin(index: Int) {
+        for (i in 0 until pinyinRow.childCount) {
+            val cell = pinyinRow.getChildAt(i) as? TextView ?: continue
+            styleCell(cell, i == index)
         }
     }
 
-    fun hideBubbles() {
-        if (!bubbleMode) return
-        bubbleMode = false
-        bubblePick = null
-        bubbleRow.visibility = View.GONE
-        bubbleRow.removeAllViews()
+    fun hidePinyinGroups() {
+        if (!pinyinMode) return
+        pinyinMode = false
+        pinyinPick = null
+        pinyinRow.visibility = View.GONE
+        pinyinRow.removeAllViews()
         preedit.visibility = View.VISIBLE
     }
 
@@ -162,16 +167,15 @@ open class PreeditUi(
         val string = composition.toSpannedString()
         val cursorPos = composition.cursorPos
         val hasPreedit = composition.length > 0
-        visible = hasPreedit
+        visible = hasPreedit || pinyinMode
         if (!hasPreedit) {
-            // 编码被清空（选字上屏或退格）后，拼音冒泡使命完成，恢复正常编码显示
-            if (bubbleMode) hideBubbles()
+            // 编码被清空（选字上屏或退格）后，拼音组使命完成，恢复正常编码显示
+            if (pinyinMode) hidePinyinGroups()
             updateTextView("", false)
             return
         }
-        // 冒泡模式：候选区由引擎里已送入的默认拼音驱动，编码区只显示拼音冒泡，
-        // 不再回显原始按键编码（否则会把 qo 这种非法拼音显示出来）。
-        if (bubbleMode) return
+        // 拼音组模式：编码区只显示拼音组，不再回显代表码（如 qo 这种非法拼音）
+        if (pinyinMode) return
         val stringWithCursor =
             if (cursorPos == 0 || cursorPos == string.length) {
                 string

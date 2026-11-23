@@ -59,34 +59,6 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
 
     private val prefs = AppPrefs.defaultInstance()
 
-    /** 双键布局多义键消歧引擎 */
-    private val multiKeyEngine by lazy {
-        MultiKeyEngine(rime).apply {
-            callback = MultiKeyEngine.Callback { choices, _ ->
-                service.lifecycleScope.launch {
-                    if (choices.isEmpty()) return@launch
-                    // 默认取第一项：立即送入引擎，让下方候选栏出现对应字
-                    applyChoice(choices[0].pinyin)
-                    if (choices.size > 1) {
-                        // 多个合法拼音：在编码区（原显示 QO 处）显示可点冒泡，
-                        // 键盘本身保持不变；点某个冒泡即替换编码并更新下方候选。
-                        preeditDelegate.ui.showBubbles(
-                            labels = choices.map { it.pinyin.uppercase() },
-                            onPick = { index ->
-                                service.lifecycleScope.launch {
-                                    applyChoice(choices[index].pinyin)
-                                    preeditDelegate.ui.selectBubble(index)
-                                }
-                            },
-                        )
-                    } else {
-                        preeditDelegate.ui.hideBubbles()
-                    }
-                }
-            }
-        }
-    }
-
     private fun showDialog(dialog: suspend (RimeApi) -> Dialog) {
         rime.launchOnReady { api ->
             service.lifecycleScope.launch {
@@ -138,10 +110,6 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
             }
 
             override fun onAction(action: KeyAction) {
-                // 任何普通按键（含功能键、退格）都会中断未完成的双键消歧序列。
-                // 若拼音冒泡正显示，一并收起，交由普通按键流程接管。
-                multiKeyEngine.cancel()
-                preeditDelegate.ui.hideBubbles()
                 val text = action.getText(KeyboardWindow.currentKeyboard)
                 val shouldHandle = when {
                     action.commit.isNotEmpty() -> {
@@ -451,13 +419,6 @@ class CommonKeyboardActionListener(override val di: DI) : DIAware {
 
                     i += value.length
                 }
-            }
-
-            override fun onMultiKeyClick(letters: String): Boolean {
-                // 仅在双拼方案下启用；全拼或英文态直接回退到普通按键流程
-                if (!multiKeyEngine.isShuangpinMode()) return false
-                multiKeyEngine.accept(letters)
-                return true
             }
         }
     }

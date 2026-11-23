@@ -273,44 +273,6 @@ class Rime :
         getRimeCandidates(startIndex, limit)
     }
 
-    override suspend fun probeCandidates(sequence: String): Array<CandidateProto> = withRimeContext {
-        // 保存现场：当前编码串。探测过程全程只调 native 方法，不调用 emitResponse，
-        // 因此不会上屏、不刷新候选栏。
-        val savedInput = getRimeRawInput()
-        clearRimeComposition()
-        // 逐字符送入引擎（native 层，不 emitResponse）。字母 keysym 即其小写 ASCII 码。
-        var accepted = true
-        for (ch in sequence) {
-            val code = ch.lowercaseChar().code
-            if (code !in 0x61..0x7a) {
-                accepted = false
-                break
-            }
-            if (!processRimeKey(code, 0)) {
-                accepted = false
-                break
-            }
-        }
-        val result = if (accepted) getRimeCandidates(0, 16) else emptyArray()
-        // 恢复现场：先清掉探测输入，再把原编码串逐字符放回，保持引擎状态一致。
-        clearRimeComposition()
-        if (savedInput.isNotEmpty()) {
-            for (ch in savedInput) {
-                processRimeKey(ch.code, 0)
-            }
-        }
-        result
-    }
-
-    override suspend fun replaceInput(sequence: String) = withRimeContext {
-        clearRimeComposition()
-        for (ch in sequence) {
-            processRimeKey(ch.lowercaseChar().code, 0)
-        }
-        // 只刷新一次：编码区直接进入目标拼音，候选栏对应更新，无中间空态
-        emitResponse()
-    }
-
     override suspend fun setCandidatePagingMode(enabled: Boolean) = withRimeContext {
         pagingMode = enabled
         emitResponse()

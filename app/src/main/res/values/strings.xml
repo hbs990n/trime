@@ -267,5 +267,4 @@
     <string name="tool_bar_config">Configure candidate bar</string>
     <string name="tool_bar_config_hint">Drag the handle to reorder. Long press a row to delete or restore it.</string>
     <string name="tool_bar_deleted">Deleted</string>
-    <string name="multikey_choose_pinyin">Select a pinyin</string>
 </resources>

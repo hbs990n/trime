@@ -45,7 +45,12 @@ object UserDataManager {
       patch:
         schema_list:
           - schema: double_pinyin_flypy
+          - schema: double_pinyin_flypy_twokey
     """
+
+    /** 供「双键」主题部署时切换到的方案 id。 */
+    const val TWOKEY_SCHEMA_ID = "double_pinyin_flypy_twokey"
+    const val DEFAULT_SCHEMA_ID = "double_pinyin_flypy"
 
     private val lock = Mutex()
 
@@ -133,6 +138,19 @@ object UserDataManager {
         val custom = File(userDataDir, DEFAULT_CUSTOM_FILE_NAME)
         if (!custom.exists() && custom.createNewFile()) {
             custom.writeText(SCHEMA_LIST_CUSTOM_PATCH.trimIndent())
+            return
+        }
+        // 老用户的 default.custom.yaml 已存在，需补入双键方案的 schema_list 项，
+        // 否则 Rime 部署不会编译它的 prism，切换后拿不到候选。
+        if (custom.exists()) {
+            val content = custom.readText()
+            if (!content.contains(TWOKEY_SCHEMA_ID)) {
+                val patched = content.replace(
+                    "- schema: $DEFAULT_SCHEMA_ID",
+                    "- schema: $DEFAULT_SCHEMA_ID\n    - schema: $TWOKEY_SCHEMA_ID",
+                )
+                if (patched != content) custom.writeText(patched)
+            }
         }
     }
 

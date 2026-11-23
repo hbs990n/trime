@@ -38,10 +38,4 @@ interface KeyboardActionListener {
      * @param input the sequence of characters to be displayed.
      */
     fun onText(input: String)
-
-    /**
-     * 双键布局的多义键被单击。[letters] 是该键代表的字母集（如 "qw"）。
-     * 返回 true 表示事件已被消歧引擎消费，不再走普通按键流程。
-     */
-    fun onMultiKeyClick(letters: String): Boolean = false
 }

@@ -207,16 +207,6 @@ class KeyView(
     private fun processKeyAction(action: KeyAction, behavior: KeyBehavior) {
         Timber.d("processKeyAction: label=${key.getLabel()}, code=${action.code}, type=$behavior")
 
-        // 双键布局多义键：字母集写在 hint（如 "qw"），单击时交给消歧引擎。
-        // 长按气泡、上滑数字等其它手势保持原样，用户仍可精确指定某个字母。
-        if (behavior == KeyBehavior.CLICK &&
-            key.hint.length >= 2 &&
-            key.hint.all { it in 'a'..'z' } &&
-            keyboardActionListener.onMultiKeyClick(key.hint)
-        ) {
-            return
-        }
-
         if (action.isModifierKey) {
             keyboard.clickModifierKey(
                 modifierKeyLockState(action, behavior),

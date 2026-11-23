@@ -263,5 +263,4 @@
     <string name="tool_bar_config">配置候選欄</string>
     <string name="tool_bar_config_hint">拖動右側手柄排序，長按條目刪除或恢復。</string>
     <string name="tool_bar_deleted">已刪</string>
-    <string name="multikey_choose_pinyin">選擇拼音組合</string>
 </resources>

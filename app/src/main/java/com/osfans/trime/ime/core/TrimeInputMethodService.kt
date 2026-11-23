@@ -37,6 +37,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import com.osfans.trime.core.KeyModifiers
 import com.osfans.trime.core.KeyValue
+import com.osfans.trime.core.data.UserDataManager
 import com.osfans.trime.core.RimeApi
 import com.osfans.trime.core.RimeKeyMapping
 import com.osfans.trime.core.RimeMessage
@@ -152,6 +153,13 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
     private val onThemeChangeListener =
         ThemeManager.OnThemeChangeListener {
             themeScope?.let { replaceInputViews(it) }
+            // 「双键」主题切到专用的小鹤双拼·双键方案（多义键由引擎原生展开），
+            // 其它主题切回普通小鹤双拼，避免多义规则污染标准键盘。
+            val themeId = ThemeManager.prefs.selectedTheme.getValue()
+            val isTwoKey = themeId.contains("shuangjian", ignoreCase = true)
+            val targetSchema =
+                if (isTwoKey) UserDataManager.TWOKEY_SCHEMA_ID else UserDataManager.DEFAULT_SCHEMA_ID
+            postRimeJob { selectSchema(targetSchema) }
         }
 
     @Keep
@@ -229,6 +237,12 @@ open class TrimeInputMethodService : LifecycleInputMethodService() {
                 ThemeManager.init(resources.configuration)
                 ThemeManager.addOnChangedListener(onThemeChangeListener)
                 ColorManager.addOnChangedListener(onColorChangeListener)
+                // 冷启动时按当前主题选好方案（此时 ThemeManager.init 不会触发 change 监听）
+                val themeId = ThemeManager.prefs.selectedTheme.getValue()
+                val isTwoKey = themeId.contains("shuangjian", ignoreCase = true)
+                selectSchema(
+                    if (isTwoKey) UserDataManager.TWOKEY_SCHEMA_ID else UserDataManager.DEFAULT_SCHEMA_ID,
+                )
             }
         }
         registerReceiver()
