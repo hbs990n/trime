@@ -50,7 +50,7 @@ android {
         // Fixed debug keystore committed to the repo so every CI run signs
         // identically. Without this AGP generates a fresh debug key per runner,
         // breaking in-place updates with INSTALL_FAILED_UPDATE_INCOMPATIBLE.
-        create("debug") {
+        getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
