@@ -22,10 +22,6 @@
     static void checkNotNullParameter(...);
 }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
--keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Release builds no longer need source file / line number metadata.
+# Keeping it costs size and is only useful for debug stack traces.
+#-keepattributes SourceFile,LineNumberTable
