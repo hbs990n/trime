@@ -28,6 +28,9 @@ android {
         versionName = "3.3.13"
 
         multiDexEnabled = true
+        // Only ship the languages this app actually has translations for.
+        // Cuts a large amount of unused strings pulled in by dependencies.
+        resourceConfigurations += setOf("en", "zh-rCN", "zh-rTW")
         buildConfigField("String", "BUILDER", "\"${project.builder}\"")
         buildConfigField("long", "BUILD_TIMESTAMP", project.buildTimestamp)
         buildConfigField("String", "BUILD_COMMIT_HASH", "\"${project.buildCommitHash}\"")
