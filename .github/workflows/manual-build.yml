@@ -137,15 +137,15 @@ jobs:
         run: |
           git apply --directory=app/src/main/jni/librime-lua-deps patches/lua.patch
 
-      - name: Build debug Trime
+      - name: Build release Trime
         run: |
-          ./gradlew :app:assembleDebug
+          ./gradlew :app:assembleRelease
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: trime-debug
-          path: app/build/outputs/apk/debug/
+          name: trime-release
+          path: app/build/outputs/apk/release/
           retention-days: 90
 
       - name: Upload precompiled Rime data
